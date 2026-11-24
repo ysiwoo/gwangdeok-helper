@@ -260,9 +260,9 @@ Programming assignment/
 ### share.py — 공유 (웹 주소·QR코드)
 | 함수 | 하는 일 | 표시 |
 |---|---|---|
-| `make_page` · `meal_body` · `rooms_body` · `places_body` · `exams_body` · `index_page` | 휴대폰에서 보기 좋은 공유 페이지 만들기 (학교 일정은 `make_schedule_page` 그대로) | |
+| `app_style` · `web_links` · `make_page` · `all_rooms_card` | 앱 화면 틀(app.html)의 모양을 그대로 가져와, 앱과 같은 탭 줄·카드 모양의 웹 페이지를 만든다. 웹에는 서버가 없어 입력·버튼은 보기 전용, 「3D에서 보기」는 링크로 바꾸고 교실 찾기에는 전체 교실 목록을 붙인다 | [읽기] |
 | `write_page` | `docs/`에 페이지 파일 저장 | [쓰기] |
-| `make_share_pages` | 공유 페이지 6장 + 메모장 파일 5개(일정·급식·교실·방문 장소·시험 목록)를 `docs/`에 만든다 | [읽기] [쓰기] [출력] |
+| `make_share_pages` | 앱의 8개 탭(플래너·일정·급식·교실·시험 자료·오답 노트·3D 캠퍼스·방문객)을 `screens.py`가 만든 화면 그대로 `docs/`에 웹 페이지로 저장하고, 3D 캠퍼스·메모장 파일 5개·오답률 그래프를 복사한다 | [읽기] [쓰기] [출력] |
 | `make_qr` | 웹 주소로 `docs/qr.svg`를 만들고 콘솔에도 QR코드를 그린다 | [쓰기] [출력] |
 | `run_git` · `upload_share` | 프로그램 폴더를 git으로 GitHub 저장소에 올린다 (`config.txt`는 제외, GitHub Pages가 `docs/`를 웹 주소로 보여 줌) | [출력] |
 | `update_share` | 만들기 → (올리기) → QR코드 | [출력] [쓰기] |
