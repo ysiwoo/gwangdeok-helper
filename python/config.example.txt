@@ -1,0 +1,18 @@
+# 광덕고 학교생활 도우미 설정 파일 (메모장으로 고치세요)
+# 이 파일을 복사해 이름을 config.txt 로 바꾼 뒤, = 뒤에 값을 넣습니다.
+# config.txt 는 .gitignore 에 들어 있어 git에 올라가지 않습니다.
+
+# 나이스 교육정보 개방 포털 인증키 (https://open.neis.go.kr) - 없으면 학사일정을 5건만 받음
+NEIS_API_KEY =
+
+# Gemini API 키 (https://aistudio.google.com) - 무료. 없으면 AI 기능이 꺼짐
+GEMINI_API_KEY =
+
+SCHOOL_NAME = 광덕고등학교
+REGION_KEYWORD = 광주
+
+# 공유: 공유 페이지(share/ 폴더)를 올릴 GitHub 저장소 주소와, GitHub Pages 웹 주소 (QR코드로 만듦)
+# 예) GITHUB_REPO = https://github.com/아이디/gwangdeok-helper.git
+#     SHARE_URL = https://아이디.github.io/gwangdeok-helper/
+GITHUB_REPO =
+SHARE_URL =
