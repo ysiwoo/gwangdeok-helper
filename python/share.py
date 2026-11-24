@@ -32,15 +32,35 @@ TABS = [("index.html", "planner", "스터디 플래너"), ("schedule.html", "sch
         ("rooms.html", "rooms", "교실 찾기"), ("exams.html", "exams", "시험 자료"), ("notes.html", "notes", "오답 노트"),
         ("campus.html", "campus", "3D 캠퍼스"), ("guide.html", "guide", "방문객")]
 
-# 웹에서만 더하는 모양: 보기 전용 안내, 입력 칸·버튼은 눌리지 않게
+# 웹에서만 더하는 모양: 탭 링크, 「앱에서만 쓸 수 있어요」 알림
 WEB_STYLE = """
 a.tab { text-decoration: none; }
-.web-note { margin: 0; padding: 8px max(16px, calc((100% - 1120px) / 2)); font-size: 0.82rem; color: var(--ink-3); background: var(--line-soft); }
-fieldset.view-only { border: 0; margin: 0; padding: 0; min-width: 0; }
-fieldset.view-only > * + * { margin-top: 16px; }
-fieldset.view-only button:disabled, fieldset.view-only input:disabled, fieldset.view-only select:disabled { cursor: default; opacity: 1; }
 a.place, a.btn { text-decoration: none; color: inherit; }
+.web-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 10; max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 12px; font-size: 0.92rem;
+  box-shadow: 0 6px 24px rgba(16, 24, 40, 0.25); text-align: center; }
 """
+
+# 웹에는 파이썬 서버가 없으므로, 파이썬이 필요한 버튼(저장·AI·업데이트 등)을 누르면 알림만 보여 준다
+WEB_SCRIPT = """<script>
+// 이 스크립트는 알림을 보여 주는 일만 한다. (계산·저장은 파이썬 앱에서 한다)
+var toastTimer = null;
+function showAppOnly() {
+  var box = document.querySelector(".web-toast");
+  if (!box) { box = document.createElement("div"); box.className = "web-toast"; box.setAttribute("role", "status"); document.body.appendChild(box); }
+  box.textContent = "이 기능은 내 컴퓨터의 「학교생활 도우미」 앱에서만 쓸 수 있어요. 웹 공유 페이지는 보기만 할 수 있어요.";
+  box.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { box.hidden = true; }, 3200);
+}
+document.addEventListener("submit", function (e) {
+  if (e.target.closest("form[data-action]")) { e.preventDefault(); showAppOnly(); }
+});
+document.addEventListener("click", function (e) {
+  var button = e.target.closest("button[data-action]");
+  if (button && !button.form) { e.preventDefault(); showAppOnly(); }
+});
+</script>"""
 
 
 # app.html에서 화면 모양(CSS)만 꺼낸다.
@@ -67,7 +87,8 @@ def web_links(page):
 # 앱과 같은 모양의 웹 페이지 한 장을 만든다.
 #   입력: 탭 이름, 내용 HTML / 출력: HTML 문서 전체
 def make_page(tab, content):
-    """앱과 같은 모양(위쪽 탭 줄 + 카드)의 웹 페이지 한 장을 만든다. 입력·버튼은 눌리지 않는 보기 전용이다.
+    """앱과 같은 모양(위쪽 탭 줄 + 카드)의 웹 페이지 한 장을 만든다.
+    파이썬이 필요한 버튼을 누르면 「앱에서만 쓸 수 있어요」 알림이 뜬다.
     입력: 탭 이름(예: "meal"), 내용 HTML / 출력: HTML 문서 전체"""
     nav = ""
     for file_name, name, label in TABS:
@@ -78,8 +99,8 @@ def make_page(tab, content):
     if tab == "campus":
         body = '<div id="frames"><iframe id="campus" src="3d/index.html" title="3D 캠퍼스"></iframe></div>'
     else:
-        body = '<main id="view"><fieldset class="view-only" disabled>' + content + "</fieldset></main>"
-    script = ""
+        body = '<main id="view">' + content + "</main>"
+    script = WEB_SCRIPT
     if tab == "campus":   # 주소 끝(#b=건물&f=층&r=방)을 3D 화면에 넘겨 그 교실로 이동시킨다
         script = ('<script>if (location.hash) document.getElementById("campus").src = "3d/index.html" + location.hash;</script>')
     return ('<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n'
@@ -89,8 +110,7 @@ def make_page(tab, content):
             + '<link rel="stylesheet" href="app.css">\n</head>\n<body>\n'
             + '<header class="topbar"><div class="brand"><span class="brand-mark"></span>광덕고 학교생활 도우미</div>'
             + '<nav class="view-tabs" aria-label="화면 선택">' + nav + "</nav></header>\n"
-            + '<p class="web-note">' + datetime.now().strftime("%Y-%m-%d %H:%M")
-            + " 기준 · 파이썬 share.py가 앱 화면을 그대로 만든 공유 페이지예요. 입력·저장·AI는 앱에서 쓸 수 있어요.</p>\n"
+            + "<!-- " + datetime.now().strftime("%Y-%m-%d %H:%M") + " 기준 · 파이썬 share.py가 앱 화면을 그대로 만든 공유 페이지 -->\n"
             + '<div class="stage">' + body + "</div>\n" + script + "\n</body>\n</html>\n")
 
 
@@ -130,7 +150,7 @@ def make_share_pages():
     for file_name, tab, label in TABS:
         content = ""
         if tab != "campus":
-            content = screens.screen_only(tab)
+            content = screens.get_screen(tab)          # 앱과 똑같이 「AI에게 물어보기」 카드까지
         if tab == "rooms":
             content += all_rooms_card()
         write_page(file_name, make_page(tab, web_links(content)))
