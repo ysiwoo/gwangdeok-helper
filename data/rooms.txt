@@ -1,0 +1,250 @@
+건물	층	층 이름	방 이름	종류	건물 id	동
+만대관	1	1층	태극기 전시관	exhibit	mandae	1동
+만대관	1	1층	교사실	office	mandae	1동
+만대관	1	1층	대회의실	meeting	mandae	1동
+만대관	1	1층	태극기 전시장	exhibit	mandae	1동
+만대관	1	1층	태극기 영상관	meeting	mandae	1동
+만대관	1	1층	행정실	office	mandae	1동
+만대관	1	1층	문서고	storage	mandae	1동
+만대관	1	1층	휴게실	meeting	mandae	1동
+만대관	2	2층	휴게실	meeting	mandae	1동
+만대관	2	2층	교사연구실	office	mandae	1동
+만대관	2	2층	교장실	exec	mandae	1동
+만대관	2	2층	부속실	office	mandae	1동
+만대관	2	2층	탕비실	meeting	mandae	1동
+만대관	2	2층	이사장실	exec	mandae	1동
+만대관	2	2층	중교장실	exec	mandae	1동
+만대관	3	3층	과학교사연구실	office	mandae	1동
+만대관	3	3층	창고	storage	mandae	1동
+만대관	3	3층	미래교실	lab	mandae	1동
+만대관	3	3층	준비실	storage	mandae	1동
+만대관	3	3층	유레카 2실	lab	mandae	1동
+만대관	3	3층	유레카 3실	lab	mandae	1동
+만대관	3	3층	준비실 2	storage	mandae	1동
+만대관	3	3층	유레카 4실	lab	mandae	1동
+만대관	4	4층	제한구역	storage	mandae	1동
+만대관	4	4층	창고	storage	mandae	1동
+만대관	4	4층	컴퓨터실	computer	mandae	1동
+만대관	4	4층	준비실	storage	mandae	1동
+만대관	4	4층	전시실	exhibit	mandae	1동
+만대관	4	4층	도서관	library	mandae	1동
+만대관	5	옥탑	물탱크실	storage	mandae	1동
+덕린관	1	1층	가우스3실 1-10	class	deokrin	2동
+덕린관	1	1층	가우스2실 1-9	class	deokrin	2동
+덕린관	1	1층	가우스1실 1-8	class	deokrin	2동
+덕린관	1	1층	수학사랑 1-7	class	deokrin	2동
+덕린관	1	1층	수학세상 1-6	class	deokrin	2동
+덕린관	1	1층	미래수학 1-5	class	deokrin	2동
+덕린관	1	1층	생활수학 1-4	class	deokrin	2동
+덕린관	1	1층	아하수학 1-3	class	deokrin	2동
+덕린관	1	1층	아고라7실 1-2	class	deokrin	2동
+덕린관	1	1층	아고라6실 1-1	class	deokrin	2동
+덕린관	1	1층	홈베이스 B	meeting	deokrin	2동
+덕린관	1	1층	교무실	office	deokrin	2동
+덕린관	1	1층	휴게공간	meeting	deokrin	2동
+덕린관	1	1층	홈베이스 A	meeting	deokrin	2동
+덕린관	2	2층	방송실	office	deokrin	2동
+덕린관	2	2층	전산실	computer	deokrin	2동
+덕린관	2	2층	교감실	exec	deokrin	2동
+덕린관	2	2층	교무센터	office	deokrin	2동
+덕린관	2	2층	공용교실 9실	class	deokrin	2동
+덕린관	2	2층	공용교실 8실	class	deokrin	2동
+덕린관	2	2층	공용교실 7실	class	deokrin	2동
+덕린관	2	2층	공용교실 6실	class	deokrin	2동
+덕린관	2	2층	교과부장실	office	deokrin	2동
+덕린관	2	2층	일시적관찰실	meeting	deokrin	2동
+덕린관	2	2층	공용교실 3실	class	deokrin	2동
+덕린관	2	2층	보건실	health	deokrin	2동
+덕린관	2	2층	Career Zone	meeting	deokrin	2동
+덕린관	2	2층	학교홍보관	exhibit	deokrin	2동
+덕린관	2	2층	Wee 클래스	meeting	deokrin	2동
+덕린관	2	2층	진학지도실	office	deokrin	2동
+덕린관	2	2층	멀티미디어실	computer	deokrin	2동
+덕린관	2	2층	여교사휴게실	meeting	deokrin	2동
+덕린관	2	2층	학부모실	meeting	deokrin	2동
+덕린관	2	2층	학생휴게실	meeting	deokrin	2동
+덕린관	3	3층	Eureka 6 3-10	class	deokrin	2동
+덕린관	3	3층	Eureka 5 3-9	class	deokrin	2동
+덕린관	3	3층	성균관 3-8	class	deokrin	2동
+덕린관	3	3층	집현전 3-7	class	deokrin	2동
+덕린관	3	3층	다산초당 3-6	class	deokrin	2동
+덕린관	3	3층	소쇄원 3-5	class	deokrin	2동
+덕린관	3	3층	녹우당 3-4	class	deokrin	2동
+덕린관	3	3층	송강정 3-3	class	deokrin	2동
+덕린관	3	3층	면앙정 3-2	class	deokrin	2동
+덕린관	3	3층	식영정 3-1	class	deokrin	2동
+덕린관	3	3층	홈베이스 B	meeting	deokrin	2동
+덕린관	3	3층	교무실	office	deokrin	2동
+덕린관	3	3층	휴게공간	meeting	deokrin	2동
+덕린관	3	3층	홈베이스 A	meeting	deokrin	2동
+덕린관	4	4층	E.O.Z 2-10	class	deokrin	2동
+덕린관	4	4층	Clinton 2-9	class	deokrin	2동
+덕린관	4	4층	Reagan 2-8	class	deokrin	2동
+덕린관	4	4층	Carter 2-7	class	deokrin	2동
+덕린관	4	4층	Trueman 2-6	class	deokrin	2동
+덕린관	4	4층	Jefferson 2-5	class	deokrin	2동
+덕린관	4	4층	Roosevelt 2-4	class	deokrin	2동
+덕린관	4	4층	Lincoln 2-3	class	deokrin	2동
+덕린관	4	4층	Washington 2-2	class	deokrin	2동
+덕린관	4	4층	Obama 2-1	class	deokrin	2동
+덕린관	4	4층	홈베이스 B	meeting	deokrin	2동
+덕린관	4	4층	교무실	office	deokrin	2동
+덕린관	4	4층	진실	meeting	deokrin	2동
+덕린관	4	4층	휴게공간	meeting	deokrin	2동
+덕린관	4	4층	홈베이스 A	meeting	deokrin	2동
+청운관(중학교)	1	1층	보건실	health	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	인쇄실	office	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	방송실	office	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	교육정보실	office	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	회의실	meeting	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	탕비실	meeting	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	교감실	exec	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	교무실	office	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	자율자동차 교실	lab	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	로봇공간 교실	lab	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	도서실	library	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	영어교실	class	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	창고	storage	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	준비실	storage	mid	4동 · 광덕중학교
+청운관(중학교)	1	1층	미래교실	lab	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1-1	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1학년실	office	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1-2	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1-3	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	소프트웨어실	computer	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1-4	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1-5	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	1-6	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	Wee Class	meeting	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	ESD	class	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	준비실	storage	mid	4동 · 광덕중학교
+청운관(중학교)	2	2층	컴퓨터실	computer	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-1	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	진로상담실	office	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-2	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-3	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	인성교육실	meeting	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-4	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-5	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-6	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	2-7	class	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	과학실 I	lab	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	준비실	storage	mid	4동 · 광덕중학교
+청운관(중학교)	3	3층	과학실 II	lab	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-1	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3학년실	office	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-2	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-3	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	미디어실	computer	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-4	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-5	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-6	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	3-7	class	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	미술실	art	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	준비실	storage	mid	4동 · 광덕중학교
+청운관(중학교)	4	4층	음악실	music	mid	4동 · 광덕중학교
+복지관	1	1층	창고	storage	bokji	6동
+복지관	1	1층	전처리실	kitchen	bokji	6동
+복지관	1	1층	휴게실 1	meeting	bokji	6동
+복지관	1	1층	휴게실 2	meeting	bokji	6동
+복지관	1	1층	학생식당	cafe	bokji	6동
+복지관	1	1층	보일러실	storage	bokji	6동
+복지관	1	1층	창고 1	storage	bokji	6동
+복지관	1	1층	매점	cafe	bokji	6동
+복지관	1	1층	주방	kitchen	bokji	6동
+복지관	1	1층	영양사실	office	bokji	6동
+복지관	1	1층	창고 3	storage	bokji	6동
+복지관	2	2층	다용도실	storage	bokji	6동
+복지관	2	2층	음악실 2	music	bokji	6동
+복지관	2	2층	합주실	music	bokji	6동
+복지관	2	2층	합주파트 연습실	music	bokji	6동
+복지관	2	2층	학생회실	meeting	bokji	6동
+복지관	2	2층	가사실습실	kitchen	bokji	6동
+단재관	1	1층	아랍어실	class	danjae	3동
+단재관	1	1층	스페인어실	class	danjae	3동
+단재관	1	1층	중국어실	class	danjae	3동
+단재관	1	1층	일본어실	class	danjae	3동
+단재관	2	2층	학생자치실	meeting	danjae	3동
+단재관	2	2층	미술준비실	storage	danjae	3동
+단재관	2	2층	미술실	art	danjae	3동
+단재관	2	2층	미디어제작실	computer	danjae	3동
+단재관	3	3층	아고라 4실	class	danjae	3동
+단재관	3	3층	아고라 3실	class	danjae	3동
+단재관	3	3층	사회교사연구실	office	danjae	3동
+단재관	4	4층	음악실	music	danjae	3동
+단재관	4	4층	음악준비실	storage	danjae	3동
+단재관	4	4층	아고라 5실	class	danjae	3동
+단재관	4	4층	학생휴게실	meeting	danjae	3동
+단재관	5	옥탑	옥탑 창고	storage	danjae	3동
+이산관	1	1층	창고	storage	isan	9동 동쪽
+이산관	1	1층	기계실	storage	isan	9동 동쪽
+이산관	1	1층	식당	cafe	isan	9동 동쪽
+이산관	2	2층	식당	cafe	isan	9동 동쪽
+이산관	2	2층	주방	kitchen	isan	9동 동쪽
+이산관	3	3층	301호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	302호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	303호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	304호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	305호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	사감실	office	isan	9동 동쪽
+이산관	3	3층	독서실	library	isan	9동 동쪽
+이산관	3	3층	318호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	317호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	316호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	315호 기숙사	dorm	isan	9동 동쪽
+이산관	3	3층	314호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	401호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	402호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	403호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	404호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	405호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	사감실	office	isan	9동 동쪽
+이산관	4	4층	독서실	library	isan	9동 동쪽
+이산관	4	4층	418호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	417호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	416호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	415호 기숙사	dorm	isan	9동 동쪽
+이산관	4	4층	414호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	501호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	502호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	503호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	504호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	505호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	사감실	office	isan	9동 동쪽
+이산관	5	5층	독서실	library	isan	9동 동쪽
+이산관	5	5층	518호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	517호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	516호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	515호 기숙사	dorm	isan	9동 동쪽
+이산관	5	5층	514호 기숙사	dorm	isan	9동 동쪽
+귀촌관	1	1층	창고	storage	gwichon	9동 서쪽
+귀촌관	2	2층	전처리실	kitchen	gwichon	9동 서쪽
+귀촌관	2	2층	부식창고	storage	gwichon	9동 서쪽
+귀촌관	2	2층	휴게실	meeting	gwichon	9동 서쪽
+귀촌관	2	2층	영양사실	office	gwichon	9동 서쪽
+귀촌관	2	2층	특별교실	class	gwichon	9동 서쪽
+귀촌관	3	3층	특별교실 302	class	gwichon	9동 서쪽
+귀촌관	3	3층	특별교실 301	class	gwichon	9동 서쪽
+귀촌관	4	4층	준비실	storage	gwichon	9동 서쪽
+귀촌관	4	4층	특별교실 402	class	gwichon	9동 서쪽
+귀촌관	4	4층	특별교실 401	class	gwichon	9동 서쪽
+귀촌관	5	5층	특별교실 502	class	gwichon	9동 서쪽
+귀촌관	5	5층	3D프린터실	computer	gwichon	9동 서쪽
+귀촌관	5	5층	특별교실 501	class	gwichon	9동 서쪽
+체육관	1	1층	창고	storage	gym	8동
+체육관	1	1층	선수대기실	meeting	gym	8동
+체육관	1	1층	준비실	meeting	gym	8동
+체육관	1	1층	무대	stage	gym	8동
+체육관	1	1층	강당	court	gym	8동
+체육관	2	2층 관람석	관람석	seats	gym	8동
+체육관	2	2층 관람석	창고	storage	gym	8동
+체육실동	1	1층	지도자실	office	sport	10동
+체육실동	1	1층	체육기구실	storage	sport	10동
+체육실동	1	1층	휴게실	meeting	sport	10동
+체육실동	1	1층	분석실	office	sport	10동
+체육실동	1	1층	비품관리실	storage	sport	10동
+수위실	1	1층	창고 1	storage	guard	5동
+수위실	1	1층	창고 2	storage	guard	5동
+수위실	1	1층	방	meeting	guard	5동
+수위실	1	1층	휴게실	meeting	guard	5동
+수위실	1	1층	안내실	office	guard	5동
