@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>광덕고 학교생활 도우미</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar"><div class="brand"><span class="brand-mark"></span>광덕고 학교생활 도우미</div><nav class="view-tabs" aria-label="화면 선택"><a class="tab" href="index.html">스터디 플래너</a><a class="tab" href="schedule.html">학교 일정</a><a class="tab" href="meal.html">급식</a><a class="tab" href="rooms.html">교실 찾기</a><a class="tab" href="exams.html">시험 자료</a><a class="tab" href="notes.html">오답 노트</a><a class="tab active" href="campus.html">3D 캠퍼스</a><a class="tab" href="guide.html">방문객</a></nav></header>
+<p class="web-note">2026-11-24 15:30 기준 · 파이썬 share.py가 앱 화면을 그대로 만든 공유 페이지예요. 입력·저장·AI는 앱에서 쓸 수 있어요.</p>
+<div class="stage"><div id="frames"><iframe id="campus" src="3d/index.html" title="3D 캠퍼스"></iframe></div></div>
+<script>if (location.hash) document.getElementById("campus").src = "3d/index.html" + location.hash;</script>
+</body>
+</html>

@@ -1,0 +1,1039 @@
+<title>광덕고 3D 캠퍼스</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gothic+A1:wght@400;600;800&display=swap">
+<style>
+/* Layout: full-bleed 3D campus; school-green HUD cards pinned to corners; building labels float over the scene */
+:root{
+  --panel:rgba(255,255,255,.9);--panel-line:rgba(28,48,38,.14);--ink:#1c2a23;--ink-2:#4f6158;
+  --accent:#2f7d4f;--accent-ink:#ffffff;--chip:#eef3ef;--label:rgba(24,30,28,.82);--label-ink:#ffffff;--sky:#cfdbe6;
+  --f-display:"Do Hyeon","Gothic A1",system-ui,sans-serif;--f-ui:"Gothic A1",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--panel:rgba(22,30,27,.88);--panel-line:rgba(220,235,226,.14);--ink:#e8efe9;--ink-2:#a9b8af;--accent:#5fbf86;--accent-ink:#0f1f16;--chip:#2a3832;--label:rgba(14,18,16,.85);--label-ink:#f2f5f3;--sky:#1a2230;color-scheme:dark}}
+:root[data-theme="dark"]{--panel:rgba(22,30,27,.88);--panel-line:rgba(220,235,226,.14);--ink:#e8efe9;--ink-2:#a9b8af;--accent:#5fbf86;--accent-ink:#0f1f16;--chip:#2a3832;--label:rgba(14,18,16,.85);--label-ink:#f2f5f3;--sky:#1a2230;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--f-ui);overflow:hidden;touch-action:none}
+#app{position:relative;height:100%}
+#stage{position:absolute;inset:0}
+#stage canvas{display:block;width:100%;height:100%}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-100%);background:var(--label);color:var(--label-ink);font:600 12px var(--f-ui);padding:3px 8px;border-radius:4px;white-space:nowrap;pointer-events:auto;cursor:pointer}
+.lbl::after{content:"";position:absolute;left:50%;bottom:-4px;width:1px;height:4px;background:var(--label)}
+#labels.off .lbl,#labels.off .room{display:none}
+.hud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;gap:10px;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));padding-block:12px}
+.card{pointer-events:auto;background:var(--panel);border:1px solid var(--panel-line);border-radius:10px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.title{padding:9px 14px 10px}
+.title h1{margin:0;font:400 24px/1.15 var(--f-display);letter-spacing:.01em}
+.title h1 em{font-style:normal;color:var(--accent)}
+.title p{margin:3px 0 0;font-size:12px;color:var(--ink-2)}
+.tools{padding:6px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.btn{font:600 13px var(--f-ui);color:var(--ink);background:var(--chip);border:1px solid transparent;border-radius:7px;padding:7px 11px;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+@media (min-width:700px){.bottom{flex-wrap:nowrap}}
+.views{padding:6px;display:flex;gap:6px;flex-wrap:wrap}
+.info{width:min(320px,100%);padding:12px 14px 13px;display:grid;gap:6px}
+.info h2{margin:0;font:400 20px var(--f-display);display:flex;align-items:baseline;gap:8px}
+.info h2 small{font:600 12px var(--f-ui);color:var(--ink-2)}
+.info p{margin:0;font-size:13px;line-height:1.55;color:var(--ink)}
+.info .src{font-size:11px;color:var(--ink-2)}
+.info .x{justify-self:end;margin-top:-4px}
+.floors{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.floors .btn{padding:6px 10px}
+.room{position:absolute;left:0;top:0;background:rgba(255,255,255,.92);color:#1c2a23;font:700 11px var(--f-ui);padding:2px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;border:1px solid rgba(28,48,38,.18)}
+/* 교실 찾기 검색창 (광덕고 학교생활 도우미) */
+.find{padding:6px;display:grid;gap:6px;width:min(300px,100%)}
+.find-row{display:flex;gap:6px}
+.find input{flex:1;min-width:0;font:600 13px var(--f-ui);color:var(--ink);background:var(--chip);border:1px solid transparent;border-radius:7px;padding:7px 10px}
+.find input:focus{outline:2px solid var(--accent);outline-offset:1px}
+#find-out{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--ink-2);max-height:132px;overflow-y:auto}
+#find-out .btn{padding:5px 9px;font-size:12px}
+.room.hit{background:#ff9f1a;color:#1c1405;border-color:#ff7a00;font-size:13px;padding:3px 9px;z-index:2;box-shadow:0 0 0 3px rgba(255,159,26,.35)}
+.hint{justify-self:start;font-size:12px;color:var(--ink-2);background:var(--panel);border-radius:6px;padding:3px 8px}
+[hidden]{display:none!important}
+@media (max-width:560px){.title h1{font-size:20px}.title p{display:none}.btn{padding:6px 9px;font-size:12px}.info{width:100%}}
+</style>
+
+<div id="app">
+  <div id="stage"></div>
+  <div id="labels"></div>
+  <div class="hud">
+    <div class="top">
+      <div class="card title">
+        <h1><em>광덕고</em> 3D 캠퍼스</h1>
+        <p>광주 서구 화정로 202 · 2023년 평면도 · 위성사진 · 현장 사진 기준</p>
+      </div>
+      <form class="card find" id="find" role="search">
+        <div class="find-row">
+          <input id="find-q" type="search" placeholder="교실 찾기 (예: 과학실, 2-3)" aria-label="찾을 교실" autocomplete="off">
+          <button class="btn" type="submit">찾기</button>
+        </div>
+        <div id="find-out" hidden></div>
+      </form>
+      <div class="card tools">
+        <button class="btn" id="b-night" type="button" aria-pressed="false">밤</button>
+        <button class="btn" id="b-labels" type="button" aria-pressed="true">이름표</button>
+        <button class="btn" id="b-spin" type="button" aria-pressed="false">자동 회전</button>
+      </div>
+    </div>
+    <div class="bottom">
+      <div style="display:grid;gap:6px;pointer-events:none;flex:1 1 300px;min-width:0;justify-items:start">
+        <div class="card views" role="group" aria-label="시점">
+          <button class="btn" data-view="all" type="button">전경</button>
+          <button class="btn" data-view="top" type="button">위에서</button>
+          <button class="btn" data-view="front" type="button">만대관 정면</button>
+          <button class="btn" data-view="road" type="button">광장 길</button>
+          <button class="btn" data-view="facade" type="button">운동장에서</button>
+          <button class="btn" data-view="court" type="button">중정</button>
+          <button class="btn" data-view="garden" type="button">정원</button>
+          <button class="btn" data-view="gym" type="button">체육관 언덕</button>
+          <button class="btn" data-view="field" type="button">운동장</button>
+        </div>
+        <div class="hint">드래그: 회전 · 우클릭 드래그: 이동 · 휠: 확대 · 건물을 누르면 층별로 안을 볼 수 있어요</div>
+      </div>
+      <div class="card info" id="info" hidden>
+        <button class="btn x" id="info-x" type="button" aria-label="설명 닫기">닫기</button>
+        <h2 id="info-name"></h2>
+        <p id="info-desc"></p>
+        <div class="floors" id="floors" role="group" aria-label="층 선택"></div>
+        <p class="src" id="info-src"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+
+try{await Promise.race([document.fonts.load('800 40px "Gothic A1"'),new Promise(r=>setTimeout(r,2500))])}catch(e){}
+const $=s=>document.querySelector(s);
+const stage=$('#stage');
+const R=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+R.setPixelRatio(Math.min(devicePixelRatio,2));
+R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=0.82;
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.appendChild(R.domElement);
+const S=new THREE.Scene();
+const pm=new THREE.PMREMGenerator(R);S.environment=pm.fromScene(new RoomEnvironment(),0.04).texture;
+const cam=new THREE.PerspectiveCamera(38,1,1,3000);
+const C=new OrbitControls(cam,R.domElement);
+C.enableDamping=true;C.maxPolarAngle=Math.PI/2.12;C.minDistance=12;C.maxDistance=560;C.autoRotateSpeed=0.45;
+function size(){const w=stage.clientWidth,h=stage.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(size).observe(stage);size();
+function skyTex(top,mid,bot){const c=document.createElement('canvas');c.width=2;c.height=256;const g=c.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,top);gr.addColorStop(.6,mid);gr.addColorStop(1,bot);g.fillStyle=gr;g.fillRect(0,0,2,256);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+const SKY_DAY=skyTex('#8fb3d6','#c9d9e7','#e2e8ec'),SKY_NIGHT=skyTex('#050a18','#14203a','#2a3448');
+S.background=SKY_DAY;S.fog=new THREE.Fog(0xd3dde6,420,1300);
+const hemi=new THREE.HemisphereLight(0xdde8f4,0x6f6655,0.55);S.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0dc,3.2);sun.position.set(-130,220,150);sun.castShadow=true;
+sun.shadow.mapSize.set(4096,4096);Object.assign(sun.shadow.camera,{left:-200,right:200,top:200,bottom:-200,near:50,far:650});sun.shadow.bias=-0.0004;sun.shadow.normalBias=0.4;sun.shadow.radius=3;
+S.add(sun);S.add(sun.target);sun.target.position.set(-20,0,0);
+let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const rr=(a,b)=>a+rnd()*(b-a);
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const tex=(c,rep)=>{const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;if(rep)t.repeat.set(rep[0],rep[1]);return t};
+const dataTex=c=>{const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t};
+const canvas=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return [c,c.getContext('2d')]};
+function speckle(g,w,h,n,cols,a){for(let i=0;i<n;i++){g.globalAlpha=a*rnd();g.fillStyle=cols[(rnd()*cols.length)|0];g.fillRect(rnd()*w,rnd()*h,1+rnd()*2,1+rnd()*2)}g.globalAlpha=1}
+const shade=(hex,k)=>{const c=new THREE.Color(hex);c.multiplyScalar(k);return '#'+c.getHexString()};
+const col=new THREE.Color(),dummy=new THREE.Object3D();
+// site plan in true metres (x east, z south along the campus grid, which runs 10.25° clockwise of true north), traced from a satellite photo
+// ---------- terrain ----------
+// natural ground from SRTM elevation samples (10 m grid over x,z = -200..200, 0.5 m steps from 40 m above sea level; 42.3 m = the main road),
+// flattened under the buildings, sunk 1.5 m for the field (granite stands along its west side), a plateau for the gym and its car park,
+// stone retaining walls along the north and west edges, and 만대동산, the wooded hill south-east of the field
+const E_GRID='EFHJJJIHGEDDEEEDBBBA@?>>>>>>>=<;976544456|FGHIJJIGFEDDDDDDBBBA?>>>>>>>=;;:876543456|FGHJJJJHFEDDDDDDCBB@?>>>>>=<;::9765432445|HGHJJJJIFDDDDDDDDCA@@?>>>=;:::98643222344|HHIJJJJIFEDDDEFEDBA@@@>=<<;:::87531112244|HJJJJJJIHFEDDEFEDBA@?>=<<<;::986420001233|IJJJJJJJIGEDDEFFEDA?>=<<;::::975320001222|IJJJJJJJJHECDEFEDCA?>=<;;::::976431000121|HHIIIIJJIGDDDEECBBB@><:99:::::87542101220|FGGGHHHIGFDCDDCBBBA?<:76689:::98653112210|EFFFGGFFFEDCBCBBBA?=:7545689:::9764322221|DDEEEEDDDDBAAABA@?=:74334578::::876643222|DDDDDDCBBAA@@@@@>=;7532234579:::987654222|DDDDDDB@@@@@@@@?=;86532224569;;;;97665345|CDDDDCB@@@@@@@@?=:75432234568;<<;:9766678|CDDCBBB@@@@@@?>?=:86432234578;<<;:97689:;|CDDCBBB@@@@@@?>><:8642223468:;<<;98889:;<|CCCCBBBBA@??@>=<;9754322357:;<<<;:99:;<=>|BBBBBBBBA?>>>=;;:8644433469;<<<<;;;:;<=?A|BBBBBBBB@?>==<;98764444568:=>>>===<<<>?@B|BBBBBBBA@?=<<<;9876444458;>?@A@@@?>>?@AAB|BBBBBBBB@?=<;::987544446:=@BBBCBAAAABCCCC|BBBBBBBBB@><;::976544448;=ADDEEDBBCCCDEED|BBBBBBBBBA><<;::97544569;>BEFGHGFFFFEFFFF|BBCDCCCBBB?==<:::865568:<?BFHIIIIIHHHHGGG|BBDDDDDDCA@??=;::98878:<>@CGJKKJJJIIIIIHH|BBDDDDDDCB@@@@><;;;::;<=?ADHKLLLLLLKKJJJI|BCDDDDDDDCBAAA@?>>=>>???@BDGJKKMNONNMLKKK|BCDDDDDDDDCCCBBAAAAABCBBABEGIJKMPPONMLLLL|BCDDDDDDDDEFECCCCDDDEEEDCDEHIJMOPQPNLLLLL|DEEEDDDDDEFFEDDEFFFGGGGEDEGHJLNOQRQONMMML|DFFFEDDDEGGFFFFGHGGHHHHGGGGILMNPRRQONNNNM|EFFFEDEFGHHHGGGHHHHHHHIIIIIKMOQSSRPONNNNN|FGGFFFFGHHHHHHHHIJIIIJJJKLLMOQSTSQPOOONNN|HHHHHGHIIHHHHHHIJJJJJKLKLNOPPQSTSQPPPPONN|HHIIIIIJJJJIIIJJJJJJJLLMNOPQRRSTRQPPPPONN|IIJKJJKLKKKKKLLLKKKJKLMNOPPQRRSTRPPPPPNNN|JJJKLKLMMLLMNNNNMLLLMNOPQQPPQRRSRPPPPPNNN|JKKLLMNNNOOOOOPPNNNMNOPQRRRQRRRRRPONONMNO|KLLLMNOOOPQQPPRRPOOONNPQRRRRRRRRQPOMMLLMN|LLLLMOQQQRSSRQRRRPPPNNPRRRRRRRRRQPOMJIILM'.split('|'),E0=42.3;
+const srtm=(x,z)=>{const fx=Math.min(39.999,Math.max(0,(x+200)/10)),fz=Math.min(39.999,Math.max(0,(z+200)/10)),i=fx|0,j=fz|0,a=fx-i,b=fz-j,e=(r,c)=>40+(E_GRID[r].charCodeAt(c)-48)/2;
+  return (e(j,i)*(1-a)+e(j,i+1)*a)*(1-b)+(e(j+1,i)*(1-a)+e(j+1,i+1)*a)*b-E0};
+const HILL=8,FIELD_Y=-1.5;
+const box=(x,z,x0,z0,x1,z1,w)=>sm((x-x0)/w+.5)*sm((x1-x)/w+.5)*sm((z-z0)/w+.5)*sm((z1-z)/w+.5);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const PADS=[]; // flat pads under small buildings that sit on sloping ground (filled in by the generator)
+function GH(x,z){
+  let h=srtm(x,z);
+  // 만대동산: SRTM's 30 m grid flattens the wooded hill south-east of the field, so it is shaped here as a rounded summit
+  // about 18 m above the main road (an estimate from the photos; the drawings and SRTM give no exact height)
+  {const w=box(x,z,30,60,114,154,10),hill=3+15*Math.exp(-((x-76)**2/(2*24*24)+(z-114)**2/(2*26*26)));h=lerp(h,Math.max(h,hill),w)}
+  const dWall=z<-93.3&&x<-12?-93.3-z:(x<-104.8&&z<29.5?-104.8-x:(x<-87.4&&z>=29.5&&z<104?-87.4-x:0));
+  if(dWall>0)h=Math.min(h,2.6+.35*dWall);                                         // ground behind the retaining walls
+  const core=Math.max(box(x,z,-104.8,-93.3,-12,40,1),box(x,z,-12,-92,12.5,40,10),box(x,z,-87.4,29.5,12.5,80,1),box(x,z,-87.4,77,12.5,103.4,1),box(x,z,12.5,-95,29.5,56,3));
+  h=lerp(h,0,core);
+  h=lerp(h,HILL*sm((z-55)/48),sm((x-11.5)/1.5)*(1-sm((x-24.5)/2))*sm((z-50)/8)*(1-sm((z-104)/2)));   // ramp up the main road
+  h=lerp(h,HILL+2.5*sm((z-146)/12),sm((z-102.6)/1.2)*sm((x+66)/4)*(1-sm((x-24)/10)));                  // gym plateau
+  const dOut=Math.max(0,Math.hypot(x-FIELD.x,Math.max(0,Math.abs(z-FIELD.z)-FIELD.half))-FIELD.r);
+  h=lerp(h,FIELD_Y,(1-sm(dOut/2.5))*sm((x-29.2)/2.2));                            // the field, sunk below the road
+  for(const p of PADS)h=lerp(h,p.h,box(x,z,p.x0,p.z0,p.x1,p.z1,3));
+  h=lerp(h,8,box(x,z,33,106,51,149,3));                                           // red clay court cut into the hillside
+  return h*(1-sm((Math.max(Math.abs(x),Math.abs(z))-175)/25))}
+// ---------- field: sand track (stadium outline) round an artificial-turf pitch ----------
+const FIELD={x:65.75,z:-19.25,r:41.5,half:41.5,turf:[38,-70,101,31]};
+function inStadium(x,z,pad){const dx=x-FIELD.x,dz=z-FIELD.z,r=FIELD.r+pad;if(Math.abs(dz)<=FIELD.half)return Math.abs(dx)<r;const cz=dz>0?FIELD.half:-FIELD.half;return dx*dx+(dz-cz)**2<r*r}
+
+// ---------- buildings transcribed from the 2023 floor plans (drawing metres: u = rightward, v = downward on the sheet) ----------
+// rot = compass direction the top of the sheet points to.  W: X=X0+v, Z=Z0-u   S: X=X0-u, Z=Z0-v   N: X=X0+u, Z=Z0+v   E: X=X0-v, Z=Z0+u
+const RM=(n,t,u0,v0,u1,v1)=>({n,t,u0,v0,u1,v1});
+const CLS=(names,u0,step,v0,v1,last)=>names.map((n,i)=>RM(n,'class',u0+i*step,v0,u0+(i+1)*step,(last&&i===names.length-1)?last:v1));
+// 덕린관 (2동)
+const D_SVC=[RM('계단실','stair',18,10,25,17.2),RM('계단실','stair',75.3,12.7,82,17.2),RM('화장실','toilet',44.6,10,55.2,17.1)];
+const DEOKRIN={1:[...CLS(['가우스3실 1-10','가우스2실 1-9','가우스1실 1-8','수학사랑 1-7','수학세상 1-6','미래수학 1-5','생활수학 1-4','아하수학 1-3','아고라7실 1-2','아고라6실 1-1'],0,10,0,7.5),
+    RM('복도','hall',0,7.5,100,10),RM('현관 홀','hall',8,10,18,12.7),RM('홀','hall',75.3,10,82,12.7),...D_SVC,
+    RM('홈베이스 B','meeting',25,10,31.4,18.2),RM('교무실','office',31.4,10,44.6,15),RM('교무실','office',31.4,15,42,18.2),RM('휴게공간','meeting',42,15,44.6,18.2),RM('홈베이스 A','meeting',55.2,10,75.3,18.2)],
+  2:[RM('방송실','office',0,0,5,7.5),RM('전산실','computer',5,0,10,7.5),RM('교감실','exec',10,0,15,7.5),RM('교무센터','office',15,0,30,7.5),
+    RM('공용교실 9실','class',30,0,37.5,7.5),RM('공용교실 8실','class',37.5,0,45,7.5),RM('공용교실 7실','class',45,0,52.5,7.5),RM('공용교실 6실','class',52.5,0,60,7.5),
+    RM('교과부장실','office',60,0,65,7.5),RM('일시적관찰실','meeting',65,0,70,7.5),RM('공용교실 3실','class',70,0,77.6,7.5),RM('단재관 연결계단','stair',77.6,0,80,7.5),
+    RM('보건실','health',80,0,90,7.5),RM('Career Zone','meeting',90,0,100,10),RM('복도','hall',0,7.5,90,10),...D_SVC,RM('복도','hall',75.3,10,82,12.7),
+    RM('학교홍보관','exhibit',25,10,35,12.7),RM('Wee 클래스','meeting',25,12.7,35,18.2),RM('진학지도실','office',35,10,44.6,18.2),
+    RM('멀티미디어실','computer',55.2,10,61,13.6),RM('여교사휴게실','meeting',55.2,13.6,61,18.2),RM('복도','hall',61,10,65,12.7),RM('학부모실','meeting',61,12.7,65,18.2),RM('학생휴게실','meeting',65,10,75.3,18.2)],
+  3:[...CLS(['Eureka 6 3-10','Eureka 5 3-9','성균관 3-8','집현전 3-7','다산초당 3-6','소쇄원 3-5','녹우당 3-4','송강정 3-3','면앙정 3-2','식영정 3-1'],0,10,0,7.5,10),
+    RM('복도','hall',0,7.5,90,10),...D_SVC,RM('복도','hall',75.3,10,82,12.7),
+    RM('홈베이스 B','meeting',25,10,31.4,18.2),RM('교무실','office',31.4,10,44.6,15),RM('교무실','office',31.4,15,42,18.2),RM('휴게공간','meeting',42,15,44.6,18.2),RM('홈베이스 A','meeting',55.2,10,75.3,18.2)],
+  4:[RM('E.O.Z 2-10','class',0,0,10,10),...CLS(['Clinton 2-9','Reagan 2-8','Carter 2-7','Trueman 2-6','Jefferson 2-5','Roosevelt 2-4','Lincoln 2-3','Washington 2-2','Obama 2-1'],10,10,0,7.5,10),
+    RM('복도','hall',10,7.5,90,10),...D_SVC,RM('복도','hall',75.3,10,82,12.7),
+    RM('홈베이스 B','meeting',25,10,31.4,18.2),RM('교무실','office',31.4,10,35,12.7),RM('진실','meeting',35,10,42,12.7),RM('교무실','office',31.4,12.7,42,18.2),RM('교무실','office',42,10,44.6,15),RM('휴게공간','meeting',42,15,44.6,18.2),RM('홈베이스 A','meeting',55.2,10,75.3,18.2)]};
+[2,3,4].forEach(f=>DEOKRIN[f].push(RM('만대관 연결 홀','hall',21.5,17.2,25,18.2)));
+// 만대관 (1동)
+const M_CONN=[RM('덕린관 연결복도','conn',0,6.5,10,11.5),RM('중학교 연결복도','conn',58,4,67.5,9),RM('복도','hall',10,6.5,58,9)];
+const M_ST=[RM('계단실','stair',23,0,30,6.5),RM('계단실','stair',55,9,58,15)];
+const MANDAE={1:[...M_ST,RM('복도','hall',10,6.5,58,9),RM('중앙 홀','hall',30,0,35,6.5),RM('남교사화장실','toilet',35,0,40,2.6),RM('여교사화장실','toilet',35,2.6,40,4),RM('중앙 홀','hall',35,4,40,6.5),
+    RM('태극기 전시관','exhibit',10,9,20,16),RM('교사실','office',10,16,13,21),RM('대회의실','meeting',13,16,20,21),RM('태극기 전시장','exhibit',20,9,40,15),RM('태극기 전시장','exhibit',25,15,40,18),
+    RM('태극기 영상관','meeting',20,15,25,18),RM('행정실','office',40,9,50,18),RM('문서고','storage',50,9,55,13.5),RM('휴게실','meeting',50,13.5,55,18)],
+  2:[...M_ST,...M_CONN,RM('휴게실','meeting',30,0,35,4),RM('남교사화장실','toilet',35,0,40,2.6),RM('여교사화장실','toilet',35,2.6,40,4),RM('복도','hall',30,4,40,6.5),
+    RM('교사연구실','office',10,9,20,21),RM('교장실','exec',20,9,30,18),RM('부속실','office',30,9,35,15),RM('탕비실','meeting',30,15,35,18),RM('이사장실','exec',35,9,45,18),RM('중교장실','exec',45,9,55,18)],
+  3:[...M_ST,...M_CONN,RM('과학교사연구실','office',30,0,35,4),RM('화장실','toilet',35,0,40,4),RM('복도','hall',30,4,37,6.5),RM('창고','storage',37,4,40,6.5),
+    RM('미래교실','lab',10,9,17.6,21),RM('미래교실','lab',17.6,9,20,12),RM('준비실','storage',17.6,12,20,21),RM('유레카 2실','lab',20,9,30,18),RM('유레카 3실','lab',30,9,40,18),RM('준비실 2','storage',40,9,45,18),RM('유레카 4실','lab',45,9,55,18)],
+  4:[...M_ST,RM('덕린관 연결복도','conn',0,6.5,10,11.5),RM('중학교 연결복도','conn',58,4,67.5,9),RM('복도','hall',10,6.5,35,9),RM('복도','hall',55,6.5,58,9),
+    RM('제한구역','storage',30,0,35,4),RM('화장실','toilet',35,0,40,4),RM('복도','hall',30,4,35,6.5),RM('창고','storage',35,4,40,6.5),
+    RM('컴퓨터실','computer',10,9,20,21),RM('준비실','storage',20,9,25,22.5),RM('전시실','exhibit',25,9,35,22.5),RM('도서관','library',35,6.5,55,22.5),RM('도서관','library',55,15,56.5,22.5)],
+  5:[RM('옥탑 계단실','stair',23,0,30,4),RM('물탱크실','storage',30,0,40,4)]};
+// 중학교 교사 (4동)
+const J_SVC=f=>[RM('계단실','stair',11,10,18,16.5),RM('계단실','stair',58,10,65,16.5),RM('화장실','toilet',30,10,45,15),RM('전실','hall',26,10,30,13.5),RM('전실','hall',45,10,49,13.5)];
+const JUNG={1:[RM('보건실','health',0,0,4.5,10),RM('현관 홀','hall',4.5,0,13.2,10),RM('인쇄실','office',13.2,0,18,4.5),RM('방송실','office',13.2,4.5,18,7.5),RM('교육정보실','office',18,0,22.5,7.5),
+    RM('회의실','meeting',22.5,0,31.5,7.5),RM('탕비실','meeting',31.5,0,36,2),RM('교감실','exec',31.5,2,36,7.5),RM('교무실','office',36,0,49.5,7.5),RM('자율자동차 교실','lab',49.5,0,54,7.5),
+    RM('로봇공간 교실','lab',54,0,58.5,7.5),RM('도서실','library',58.5,0,76.5,7.5),RM('영어교실','class',76.5,0,85.5,10),RM('창고','storage',85.5,1,87.7,9.5),RM('복도','hall',13.2,7.5,76.5,10),
+    RM('계단실','stair',11,10,18,16.5),RM('계단실','stair',58,10,65,16.5),RM('화장실','toilet',30,10,45,15),RM('탕비실','meeting',19,10,29,13.5),RM('전실','hall',46,10,56,13.5),
+    RM('준비실','storage',76.5,10,85.5,12),RM('미래교실','lab',76.5,12,85.5,21.5)],
+  2:[...CLS(['1-1'],0,9,0,7.5),RM('1학년실','office',9,0,13.5,7.5),...CLS(['1-2','1-3'],13.5,9,0,7.5),RM('소프트웨어실','computer',31.5,0,40.5,7.5),...CLS(['1-4','1-5','1-6'],40.5,9,0,7.5),
+    RM('Wee Class','meeting',67.5,0,76.5,7.5),RM('ESD','class',76.5,0,85.5,7.5),RM('복지관 연결복도','conn',85.5,-.4,87.7,11.5),RM('복도','hall',0,7.5,85.5,10),...J_SVC(2),RM('준비실','storage',76.5,10,85.5,12),RM('컴퓨터실','computer',76.5,12,85.5,21.5)],
+  3:[...CLS(['2-1'],0,9,0,7.5),RM('진로상담실','office',9,0,13.5,7.5),...CLS(['2-2','2-3'],13.5,9,0,7.5),RM('인성교육실','meeting',31.5,0,40.5,7.5),...CLS(['2-4','2-5','2-6','2-7'],40.5,9,0,7.5),
+    RM('과학실 I','lab',76.5,0,85.5,7.5),RM('복도','hall',0,7.5,79,10),RM('준비실','storage',79,7.5,85.5,11.5),...J_SVC(3),RM('과학실 II','lab',76.5,11.5,85.5,21.5),RM('복도','hall',76.5,10,79,11.5)],
+  4:[...CLS(['3-1'],0,9,0,7.5),RM('3학년실','office',9,0,13.5,7.5),...CLS(['3-2','3-3'],13.5,9,0,7.5),RM('미디어실','computer',31.5,0,40.5,7.5),...CLS(['3-4','3-5','3-6','3-7'],40.5,9,0,7.5),
+    RM('미술실','art',76.5,0,85.5,7.5),RM('복도','hall',0,7.5,85.5,10),...J_SVC(4),RM('준비실','storage',76.5,10,85.5,12),RM('음악실','music',76.5,12,85.5,21.5)]};
+// 복지관 (6동)
+const BOKJI={1:[RM('창고','storage',0,0,2,3),RM('전처리실','kitchen',2,0,29,3),RM('휴게실 1','meeting',29,0,33.7,3),RM('화장실','toilet',33.7,0,35.3,3),RM('휴게실 2','meeting',35.3,0,39.8,3),RM('학생식당','cafe',39.8,0,45.2,3),RM('보일러실','storage',45.2,0,47.2,3),
+    RM('창고 1','storage',0,3,2,6.9),RM('계단','stair',0,6.9,2,10.8),RM('부출입구','hall',0,10.8,2,14.8),RM('매점','cafe',2,3,7.4,14.8),RM('창고','storage',7.4,3,12.8,8.1),RM('주방','kitchen',12.8,3,29,8.1),
+    RM('영양사실','office',29,3,32.6,6.3),RM('샤워실','toilet',32.6,3,35.3,6.3),RM('학생식당','cafe',29,6.3,35.3,8.1),RM('학생식당','cafe',35.3,3,45.2,8.1),RM('학생식당','cafe',7.4,8.1,45.2,14.8),
+    RM('창고 3','storage',45.2,3,47.2,6.9),RM('계단','stair',45.2,6.9,47.2,10.8),RM('부출입구','hall',45.2,10.8,47.2,14.8)],
+  2:[RM('화장실','toilet',18.1,0,23.1,3),RM('다용도실','storage',23.1,0,26.3,3),RM('계단','stair',0,3,2,10.8),RM('복도','hall',2,3,45.2,4.8),RM('계단','stair',45.2,3,47.2,10.8),
+    RM('음악실 2','music',2,4.8,12.8,10.8),RM('합주실','music',12.8,4.8,23.6,10.8),RM('합주파트 연습실','music',23.6,4.8,29,10.8),RM('학생회실','meeting',29,4.8,34.4,10.8),RM('가사실습실','kitchen',34.4,4.8,45.2,10.8),
+    RM('중학교 연결복도','conn',47.2,2.2,52,4.6),RM('중학교 연결복도','conn',50,.3,56.9,2.6)]};
+// 단재관 (3동)
+const DJ=[RM('계단실','stair',0,9.7,3.15,14.2),RM('복도','hall',0,7.6,3.15,9.7),RM('복도','hall',3.15,7.6,33.15,9.7),RM('계단실','stair',28.85,0,33.15,7.6)];
+const DANJAE={1:[...DJ,...CLS(['아랍어실','스페인어실'],3.15,4.5,9.7,17.2),RM('중국어실','class',12.15,9.7,21.15,17.2),RM('일본어실','class',21.15,9.7,30.15,17.2),
+    RM('화장실','toilet',24.2,0,28.85,5),RM('세면실','toilet',25,5,28.85,7.6)],
+  2:[...DJ,RM('학생자치실','meeting',3.15,9.7,12.15,17.2),RM('미술준비실','storage',12.15,9.7,16.65,17.2),RM('미술실','art',16.65,9.7,30.15,17.2),
+    RM('미디어제작실','computer',24.2,0,28.85,5),RM('복도','hall',25,5,28.85,7.6),RM('덕린관 연결복도','conn',33.15,5,48,7.6)],
+  3:[...DJ,RM('아고라 4실','class',3.15,9.7,12.15,17.2),RM('아고라 3실','class',12.15,9.7,21.15,17.2),RM('사회교사연구실','office',21.15,9.7,30.15,17.2),RM('화장실','toilet',24.2,0,28.85,5),RM('세면실','toilet',25,5,28.85,7.6)],
+  4:[...DJ,RM('음악실','music',3.15,9.7,16.65,17.2),RM('음악준비실','storage',16.65,9.7,21.15,17.2),RM('아고라 5실','class',21.15,9.7,30.15,17.2),RM('학생휴게실','meeting',24.2,0,28.85,5),RM('복도','hall',25,5,28.85,7.6)],
+  5:[RM('옥탑 창고','storage',24.2,0,28.85,5.5),RM('옥탑 계단실','stair',28.85,0,33.15,7.6)]};
+// 특별교실동 (9동) — 서쪽 이산관(급식실·기숙사), 동쪽 귀촌관(특별교실)
+const DORM_U=[2.7,5.95,9.25,12.55,15.85,19.15];
+const dorm=f=>[RM('계단실','stair',0,6,2.7,12.5),
+  ...[0,1,2,3,4].map(i=>RM(f+'0'+(i+1)+'호 기숙사','dorm',DORM_U[i],4.2,DORM_U[i+1],9.2)),RM('사감실','office',19.15,4.2,22.1,9.2),RM('독서실','library',22.1,2.1,35.5,9.2),
+  RM('복도','hall',2.7,9.2,35.5,11.3),...[0,1,2,3,4].map(i=>RM(f+String(18-i)+'호 기숙사','dorm',DORM_U[i],11.3,DORM_U[i+1],16.4)),
+  RM('화장실','toilet',19.15,11.3,22.1,16.4),RM('전실','hall',22.1,11.3,28.3,12.5),RM('세면장','toilet',22.1,12.5,25.2,16.4),RM('샤워장','toilet',25.2,12.5,28.3,16.4),RM('계단실','stair',28.3,11.3,31.6,16.4),RM('전실','hall',31.6,11.3,35.5,16.4)];
+const ISAN={1:[RM('계단실','stair',0,7.6,2.5,12.5),RM('화장실','toilet',2.5,8.8,6,13.3),RM('창고','storage',2.5,4.2,15.7,8.8),RM('창고','storage',6,8.8,15.7,16.4),RM('창고','storage',2.5,13.3,6,16.4),
+    RM('기계실','storage',15.7,4.2,21,13.2),RM('기계실','storage',21,2.1,35.5,13.2),RM('복도','hall',15.7,13.2,28.9,16.4),RM('계단실','stair',28.9,13.2,32,16.4),RM('전실','hall',32,13.2,35.5,16.4),
+    RM('식당','cafe',2.5,16.4,22.3,20.75),RM('로비','hall',22.3,16.4,35.5,20.75)],
+  2:[RM('계단실','stair',0,6,2.5,12.5),RM('식당','cafe',2.5,4.2,21,16.4),RM('식당','cafe',21,10.1,28.9,16.4),RM('주방','kitchen',21,2.1,35.5,10.1),RM('계단실','stair',28.9,11.4,32,16.4),RM('전실','hall',32,10.1,35.5,16.4),
+    RM('식당 위 오픈','void',2.5,16.4,35.5,20.75)],
+  3:dorm(3),4:dorm(4),5:dorm(5)};
+const G_E=[RM('계단실','stair',52.8,6,56.2,12.8),RM('화장실','toilet',56.2,8.5,59.5,12.8),RM('복도','hall',35.5,12.8,59.5,15.2)];
+const GWICHON={1:[RM('창고','storage',35.5,7.5,43.8,13),RM('창고','storage',43.8,7.5,52.8,13),RM('계단실','stair',52.8,6,56.2,13),RM('화장실','toilet',56.2,8.5,59.5,13)],
+  2:[...G_E,RM('전처리실','kitchen',35.5,0,39.7,12.8),RM('부식창고','storage',39.7,0,43.8,2.5),RM('샤워장','toilet',39.7,2.5,43.8,4.5),RM('휴게실','meeting',39.7,4.5,43.8,8.6),
+    RM('전실','hall',39.7,8.6,41.5,10.2),RM('화장실','toilet',41.5,8.6,43.8,10.2),RM('영양사실','office',39.7,10.2,43.8,12.8),RM('특별교실','class',43.8,0,52.8,12.8),RM('연결복도','conn',56.2,15.2,59.5,18.6),RM('단재관 연결 테라스','conn',53.3,18.6,60.9,22)],
+  3:[...G_E,RM('특별교실 302','class',35.5,0,43.8,12.8),RM('특별교실 301','class',43.8,0,52.8,12.8)],
+  4:[...G_E,RM('준비실','storage',35.5,0,43.8,2.5),RM('특별교실 402','class',35.5,2.5,43.8,12.8),RM('특별교실 401','class',43.8,0,52.8,12.8)],
+  5:[...G_E,RM('특별교실 502','class',35.5,0,43.8,12.8),RM('3D프린터실','computer',43.8,0,52.8,3.2),RM('특별교실 501','class',43.8,3.2,52.8,12.8)]};
+// 체육관 (8동)
+const GYM={1:[RM('탈의실','toilet',0,0,4.5,4.5),RM('샤워실','toilet',4.5,0,10.5,3.4),RM('화장실','toilet',4.5,31.6,10.5,35),RM('계단','stair',0,30.5,4.5,35),
+    RM('창고','storage',34.5,0,37.2,3.6),RM('선수대기실','meeting',37.2,0,45,3.6),RM('창고','storage',34.5,31.4,37.2,35),RM('선수대기실','meeting',37.2,31.4,45,35),
+    RM('준비실','meeting',40,3.6,45,8.6),RM('준비실','meeting',40,26.4,45,31.4),RM('무대','stage',38.5,8.6,45,26.4),RM('무대','stage',38.5,3.6,40,8.6),RM('무대','stage',38.5,26.4,40,31.4),
+    RM('강당','court',0,4.5,38.5,30.5),RM('강당','court',10.5,0,34.5,4.5),RM('강당','court',4.5,3.4,10.5,4.5),RM('강당','court',10.5,30.5,34.5,35),RM('강당','court',4.5,30.5,10.5,31.6)],
+  2:[RM('관람석','seats',4.5,0,35.2,4.6),RM('관람석','seats',4.5,30.4,35.2,35),RM('관람석','seats',0,8.6,4.8,26.4),RM('계단','stair',0,0,4.5,8.6),RM('계단','stair',0,26.4,4.5,35),
+    RM('계단','stair',35.2,0,37.5,4.6),RM('계단','stair',35.2,30.4,37.5,35),RM('락카룸','toilet',37.5,0,45,4.4),RM('창고','storage',40,4.4,45,8.6),RM('창고','storage',40,26.4,45,30.6),RM('락카룸','toilet',37.5,30.6,45,35),
+    RM('강당 위 오픈','void',4.8,4.6,40,30.4),RM('강당 위 오픈','void',37.5,4.4,40,4.6),RM('강당 위 오픈','void',37.5,30.4,40,30.6),RM('무대 위 오픈','void',40,8.6,45,26.4),RM('강당 위 오픈','void',4.5,4.6,4.8,8.6),RM('강당 위 오픈','void',4.5,26.4,4.8,30.4)]};
+const SPORT={1:[RM('지도자실','office',0,8.6,3,14),RM('체육기구실','storage',3,8.6,12.6,14),RM('화장실','toilet',14.1,1.9,16.6,4.9),RM('샤워실','toilet',16.6,1.9,19.6,4.9),
+    RM('휴게실','meeting',14.1,4.9,19.6,7.9),RM('분석실','office',14.1,7.9,19.6,10.9),RM('비품관리실','storage',14.1,10.9,19.6,14)]};
+const GUARD={1:[RM('창고 1','storage',0,0,3.5,3),RM('창고 2','storage',3.5,0,11.5,3),RM('창고 2','storage',6.5,3,11.5,6.5),RM('방','meeting',0,3,3.5,6.5),RM('화장실','toilet',3.5,3,4.8,6.5),RM('휴게실','meeting',4.8,3,6.5,6.5),RM('안내실','office',1,6.5,6,9.7)]};
+const WC={1:[RM('남자화장실','toilet',0,0,1.8,4.2),RM('장애인화장실','toilet',1.8,0,3.8,1.5),RM('통로','hall',1.8,1.5,3.8,4.2),RM('여자화장실','toilet',3.8,0,6,4.2)]};
+
+// X0/Z0: each drawing placed on a satellite photo of the campus (rotated 10.25° so the buildings line up with the axes; 덕린관 is the anchor)
+const BRICK='#74402f',GROOF='#3f8f7c';
+const BLD=[
+ {id:'mandae',n:'만대관',dong:'1동',rot:'W',X0:-27.5,Z0:13,floors:MANDAE,bay:2.5,wall:'#7a4231',roof:GROOF,solar:true,ribbonTop:4,
+  desc:'운동장 쪽 정면에 흰 원기둥 7개가 서 있고, 4층이 기둥 위로 튀어나와 띠창으로 둘러져 있어요. 1층 행정실·태극기 전시관, 2층 교장실·이사장실, 3층 유레카 과학실, 4층 도서관·컴퓨터실. 양 끝 연결복도(2층부터)로 덕린관·청운관과 이어지고, 두 연결복도 아래 1층은 뚫려 있어 사람과 차가 지나다녀요.',src:'도면: 주1 만대관(1동) 지하1층~옥상층 평면도, 68m × 22.5m · 위치·외관: 위성사진, 현장 사진'},
+ {id:'deokrin',n:'덕린관',dong:'2동',rot:'S',X0:5.5,Z0:31.2,floors:DEOKRIN,bay:2.5,wall:'#74402f',roof:GROOF,solar:true,
+  desc:'길이 100m의 본관. 남쪽에 10m 폭 교실 10칸씩, 북쪽에 홈베이스·교무실·화장실이 있어요. 중정 쪽 홈베이스 두 곳은 유리 커튼월로 덮여 있어요. 1층 1학년 수학 교실, 2층 교무센터·보건실, 3층 3학년, 4층 2학년. 지하에는 계단식 강당(비전홀)이 있어요.',src:'도면: 주2 덕린관(2동) 지하1층~4층 평면도, 100m × 19.2m · 외관: 현장 사진'},
+ {id:'mid',n:'청운관(중학교)',dong:'4동 · 광덕중학교',rot:'S',X0:-9.5,Z0:-54.5,floors:JUNG,bay:2.25,wall:'#76402f',roof:GROOF,solar:true,
+  desc:'광덕중학교 교사. 남쪽에 9m 폭 교실이 한 줄로 늘어서 있고 북쪽으로 계단실·화장실이 튀어나와 있어요. 1층 교무실·도서실, 2~4층 1~3학년 교실. 동쪽 끝 벽에 "청운관" 간판과 큰 현수막이 걸려 있고, 북쪽은 옹벽을 따라 주차장이에요. 동쪽 끝은 만대관, 서쪽 끝은 복지관과 연결돼요.',src:'도면: 주3 중학교교사(4동) 1~4층 평면도, 85.5m × 21.5m · 위치·외관: 위성사진, 현장 사진'},
+ {id:'bokji',n:'복지관',dong:'6동',rot:'W',X0:-98,Z0:2,floors:BOKJI,bay:2.7,wall:'#70402f',roof:'#2e8a78',hip:true,
+  desc:'중정 서쪽의 2층 건물. 1층은 학생식당·주방·매점, 2층은 음악실·합주실·가사실습실이에요. 초록 기와를 얹은 한옥풍 우진각 지붕에 1층 둘레로 기와 처마가 한 번 더 둘러져 있고, 바깥 계단으로 2층에 올라가요. 2층 연결통로로 중학교와 이어져요.',src:'도면: 주4 복지관(급식실)(6동) 1·2층·연결통로 평면도, 43.2m × 14.8m · 지붕: 현장 사진'},
+ {id:'danjae',n:'단재관',dong:'3동',rot:'W',X0:-79.4,Z0:79.2,floors:DANJAE,bay:2.25,wall:'#784333',roof:GROOF,solar:true,
+  desc:'신채호의 호를 딴 4층 건물. 1층 제2외국어실(아랍어·스페인어·중국어·일본어), 2층 미술실, 3층 아고라 교실, 4층 음악실. 북쪽 연결복도로 덕린관 2층과 이어지고, 서쪽은 돌 옹벽을 따라 좁은 길이 나 있어요.',src:'도면: 주5 단재관(3동) 지하1층~옥상층 평면도, 33.15m × 17.2m · 위치: 위성사진'},
+ {id:'isan',n:'이산관',dong:'9동 동쪽',rot:'S',X0:-18.5,Z0:98,floors:ISAN,bigWin:(f,r)=>f<=2&&r.v1>20.7,bay:3.3,wall:'#7a4433',roof:'#b3a892',solar:true,
+  desc:'특별교실동(9동)의 동쪽 부분. 정원 쪽(북쪽)으로 2개 층 높이의 식당이 튀어나와 있고, 검은 틀의 큰 유리창이 줄지어 있어요. 그 위로 크림색 처마가 둘러지고 3~5층 기숙사가 뒤로 물러나 있어요. 1층 기계실·창고, 2층 식당·주방, 3~5층 기숙사 방 10개씩과 독서실·샤워장. 동쪽 끝 계단실에는 둥근 창이 세로로 나 있어요.',src:'도면: 주7 특별교실(9동) 1~5층 평면도 (동쪽 33m 구간) · 위치: 위성사진 · 큰 창: 현장 사진'},
+ {id:'gwichon',n:'귀촌관',dong:'9동 서쪽',rot:'S',X0:-18.5,Z0:98,floors:GWICHON,bay:2.25,wall:'#7c4636',roof:'#a5a7a6',solar:true,pilotis:true,
+  desc:'특별교실동(9동)의 서쪽 부분으로, 단재관 바로 남쪽에 있어요. 벽에 "귀촌관"과 창업교육거점센터 간판이 붙어 있어요. 1층은 기둥으로 띄운 필로티와 창고, 2층 전처리실·영양사실, 3~5층 특별교실과 5층 3D프린터실이에요. 이산관과 한 건물로 붙어 있어요.',src:'도면: 주7 특별교실(9동) 1~5층 평면도 (서쪽 25.8m 구간) · 위치: 위성사진'},
+ {id:'gym',n:'체육관',dong:'8동',rot:'S',X0:-7.2,Z0:146.5,floors:GYM,fh:[5,6.5],base:HILL+.9,bay:6,wall:'#6f3a2c',roof:'#3d6fb5',gym:true,
+  desc:'45m × 35m 강당. 진한 벽돌 벽 위로 적갈색 금속 처마띠가 크게 튀어나와 있고, 처마띠에 "글로벌 리더를 지향하는 꿈과 끼가 남다른 광덕인"이 적혀 있어요. 동쪽 현관은 넓은 계단 위로 큰 출입구 세 칸이 나 있고, 앞은 콘크리트 마당(주차장)이에요. 지붕은 파란색이에요. 가운데 농구 코트 2면, 서쪽 무대, 2층에는 3면을 두른 관람석이 있어요. 운동장보다 약 9m 높은 언덕 위에 있어요.',src:'도면: 주6 체육관(8동) 지하1층~지붕층 평면도 · 위치·지붕색: 위성사진 · 외관: 현장 사진 · 높이: SRTM 고도 자료'},
+ {id:'sport',n:'체육실동',dong:'10동',rot:'W',X0:28,Z0:76,floors:SPORT,fh:[3.4],base:.6,pad:true,bay:3,wall:'#7a4433',roof:GROOF,
+  desc:'운동장 남서쪽, 큰길 옆의 단층 벽돌 건물. 납작한 지붕 끝에 흰 처마가 둘러져 있고 앞에 파란 사과 모양 안내판이 서 있어요. 체육기구실·지도자실과 휴게실·분석실·비품관리실·샤워실이 ㄱ자로 놓여 있어요.',src:'도면: 주8 체육실동(10동) 1층 평면도 · 위치: 위성사진'},
+ {id:'guard',n:'수위실',dong:'5동',rot:'E',X0:-3,Z0:-113,floors:GUARD,fh:[3.2],base:'auto',pad:true,bay:2.5,wall:'#7a4433',roof:'#8a4a3a',
+  desc:'북쪽 정문 옆 수위실. 도로 쪽으로 각진 안내실이 튀어나와 있고 뒤에 창고와 휴게실이 있어요.',src:'도면: 부1 수위실(5동) 1층 평면도 · 위치: 북쪽 정문 옆(추정)'},
+ {id:'wc',n:'야외 화장실',dong:'부속',rot:'N',X0:99,Z0:-111,floors:WC,fh:[3],base:'auto',pad:true,bay:2,wall:'#7a4433',roof:'#8a4a3a',
+  desc:'남자·여자·장애인 화장실이 있는 작은 건물이에요.',src:'도면: 부3 화장실 1층 평면도 · 위치: 운동장 북동쪽 모서리(추정)'}
+];
+
+// ---------- plan → geometry generator (shared by the model and the game) ----------
+const TW=.3,TP=.15,SLAB=.3,PARA=1.0;
+const toW=(b,u,v)=>{switch(b.rot){case'W':return[b.X0+v,b.Z0-u];case'S':return[b.X0-u,b.Z0-v];case'N':return[b.X0+u,b.Z0+v];default:return[b.X0-v,b.Z0+u]}};
+const lxOf=b=>b.rot==='S'||b.rot==='N';
+const dirW=(b,du,dv)=>{switch(b.rot){case'W':return[dv,-du];case'S':return[-du,-dv];case'N':return[du,dv];default:return[-dv,du]}};
+function wRect(b,u0,v0,u1,v1){const[a,c]=toW(b,u0,v0),[d,e]=toW(b,u1,v1);return[Math.min(a,d),Math.min(c,e),Math.max(a,d),Math.max(c,e)]}
+const fhOf=(b,f)=>{const a=b.fh||[3.6];return a[Math.min(f-1,a.length-1)]};
+const y0Of=(b,f)=>{let y=b.base||0;for(let k=1;k<f;k++)y+=fhOf(b,k);return y};
+const floorList=b=>Object.keys(b.floors).map(Number).sort((a,c)=>a-c);
+const r3=x=>Math.round(x*1000)/1000;
+function grid(lists){const us=new Set(),vs=new Set();lists.forEach(l=>l.forEach(r=>{us.add(r3(r.u0));us.add(r3(r.u1));vs.add(r3(r.v0));vs.add(r3(r.v1))}));
+  const U=[...us].sort((a,c)=>a-c),V=[...vs].sort((a,c)=>a-c);return{U,V,nu:U.length-1,nv:V.length-1}}
+function cover(g,rooms){const id=new Int32Array(Math.max(0,g.nu*g.nv)).fill(-1);
+  rooms.forEach((r,k)=>{for(let j=0;j<g.nv;j++){const vc=(g.V[j]+g.V[j+1])/2;if(vc<r.v0||vc>r.v1)continue;for(let i=0;i<g.nu;i++){const uc=(g.U[i]+g.U[i+1])/2;if(uc>r.u0&&uc<r.u1)id[j*g.nu+i]=k}}});return id}
+function rectsOf(g,flag){const out=[],used=new Uint8Array(g.nu*g.nv);
+  for(let j=0;j<g.nv;j++)for(let i=0;i<g.nu;i++){const k=j*g.nu+i;if(used[k]||!flag[k])continue;const fv=flag[k];let i1=i;while(i1+1<g.nu&&flag[j*g.nu+i1+1]===fv&&!used[j*g.nu+i1+1])i1++;
+    let j1=j;outer:while(j1+1<g.nv){for(let ii=i;ii<=i1;ii++){const kk=(j1+1)*g.nu+ii;if(flag[kk]!==fv||used[kk])break outer}j1++}
+    for(let jj=j;jj<=j1;jj++)for(let ii=i;ii<=i1;ii++)used[jj*g.nu+ii]=1;out.push({u0:g.U[i],u1:g.U[i1+1],v0:g.V[j],v1:g.V[j1+1],k:fv})}return out}
+// boundary segments of a cell id field
+function edges(g,id){const seg=[];
+  for(let i=0;i<=g.nu;i++)for(let j=0;j<g.nv;j++){const a=i>0?id[j*g.nu+i-1]:-1,c=i<g.nu?id[j*g.nu+i]:-1;if(a!==c)seg.push({ax:'u',at:g.U[i],s0:g.V[j],s1:g.V[j+1],a,c})}
+  for(let j=0;j<=g.nv;j++)for(let i=0;i<g.nu;i++){const a=j>0?id[(j-1)*g.nu+i]:-1,c=j<g.nv?id[j*g.nu+i]:-1;if(a!==c)seg.push({ax:'v',at:g.V[j],s0:g.U[i],s1:g.U[i+1],a,c})}
+  return seg}
+function merge(seg,keyOf){const m=new Map();seg.forEach(s=>{const k=s.ax+'|'+s.at+'|'+keyOf(s);if(!m.has(k))m.set(k,[]);m.get(k).push(s)});const out=[];
+  m.forEach(l=>{l.sort((a,c)=>a.s0-c.s0);let cur=null;l.forEach(s=>{if(cur&&Math.abs(cur.s1-s.s0)<1e-6)cur.s1=s.s1;else{if(cur)out.push(cur);cur={...s}}});if(cur)out.push(cur)});return out}
+const OPEN=t=>t==='hall'||t==='conn';
+const DOORISH=t=>t==='hall'||t==='conn'||t==='stair';
+// local box → world box
+function lbox(b,u0,u1,v0,v1,y0,y1){const[x0,z0,x1,z1]=wRect(b,u0,v0,u1,v1);return{x:(x0+x1)/2,z:(z0+z1)/2,y:(y0+y1)/2,sx:x1-x0,sz:z1-z0,sy:y1-y0}}
+function splitLen(a,b,step){const n=Math.max(1,Math.round((b-a)/step));return Array.from({length:n+1},(_,i)=>a+(b-a)*i/n)}
+function extStyle(b,f,t,r){if(b.gym)return'gym';if(b.bigWin&&b.bigWin(f,r))return'big';if(t==='conn')return'ribbon';if(b.ribbonTop&&f===b.ribbonTop)return'ribbon';if(b.blankBelow&&f<=b.blankBelow)return'blank';if(t==='storage'||t==='void')return'blank';return'win'}
+const GEN={parts:[],plans:{},solar:[],labels:{}};
+// every room of every building in world space, so a wall can see what lies on its other side
+const ROOMW=[];
+const roomAt=(rooms,u,v)=>rooms.find(r=>u>r.u0&&u<r.u1&&v>r.v0&&v<r.v1);
+// split an outer wall segment into the pieces that stay solid: it opens where, on the same floor, the room behind it in another
+// building is a link corridor, or where the rooms on both sides are corridors/stairs (buildings joined wall to wall)
+function portalPieces(b,s,rooms,y0,y1){const st=.25,open=[];
+  for(let t=s.s0+st/2;t<s.s1;t+=st){const lo=s.ax==='u'?[s.at+s.out*.4,t]:[t,s.at+s.out*.4],li=s.ax==='u'?[s.at-s.out*.4,t]:[t,s.at-s.out*.4];
+    const inside=roomAt(rooms,li[0],li[1]);if(!inside)continue;const[X,Z]=toW(b,lo[0],lo[1]);
+    const R=ROOMW.find(R=>R.b!==b&&X>R.x0&&X<R.x1&&Z>R.z0&&Z<R.z1&&Math.min(y1,R.y1)-Math.max(y0,R.y0)>1.5);
+    if(R&&(R.t==='conn'||inside.t==='conn'||(DOORISH(R.t)&&DOORISH(inside.t)))){const last=open[open.length-1];if(last&&Math.abs(last[1]-(t-st/2))<1e-6)last[1]=t+st/2;else open.push([t-st/2,t+st/2])}}
+  let pieces=[[s.s0,s.s1]];open.filter(([a,c])=>c-a>=.9).forEach(([g0,g1])=>{pieces=pieces.flatMap(([a,c])=>g1<=a||g0>=c?[[a,c]]:[[a,g0],[g1,c]].filter(p=>p[1]-p[0]>.05))});return pieces}
+function genBuilding(b){
+  const fl=floorList(b),parts=GEN.parts,P=(o)=>{o.b=b;parts.push(o);return o};
+  b.plan={};let bb=[1e9,1e9,-1e9,-1e9],topY=0;
+  fl.forEach((f,fi)=>{
+    const rooms=b.floors[f],y0=y0Of(b,f),fh=fhOf(b,f),wallTop=y0+fh-SLAB;topY=Math.max(topY,y0+fh);
+    const g=grid([rooms]),id=cover(g,rooms);b.plan[f]={rooms,g,id,y0,fh,W:(u,v)=>toW(b,u,v),lx:lxOf(b)};
+    rooms.forEach(r=>{const w=wRect(b,r.u0,r.v0,r.u1,r.v1);bb=[Math.min(bb[0],w[0]),Math.min(bb[1],w[1]),Math.max(bb[2],w[2]),Math.max(bb[3],w[3])]});
+    const seg=edges(g,id).map(s=>{const ra=s.a>=0?rooms[s.a]:null,rc=s.c>=0?rooms[s.c]:null;
+      if(!ra||!rc){const inside=ra||rc;s.kind='ext';s.out=ra?1:-1;s.style=extStyle(b,f,inside.t,inside);return s}
+      if(ra.n===rc.n&&ra.t===rc.t)return null;if(OPEN(ra.t)&&OPEN(rc.t))return null;
+      if(ra.t==='void'||rc.t==='void'){if(ra.t==='void'&&rc.t==='void')return null;s.kind='rail';return s}
+      s.kind='part';s.door=OPEN(ra.t)||OPEN(rc.t);return s}).filter(Boolean);
+    const ms=merge(seg,s=>s.kind==='ext'?'e'+s.out+s.style:s.kind==='rail'?'r':'p'+Math.min(s.a,s.c)+'_'+Math.max(s.a,s.c));
+    ms.forEach(s=>{
+      if(s.kind==='ext'){const step=b.bay*2;
+        const big=s.style==='big',e=big?.04:0,top=big?y0+fh:wallTop;   // the dining-hall glass runs through the floor slab
+        portalPieces(b,s,rooms,y0,y0+fh).forEach(([p0,p1])=>{const cuts=splitLen(p0,p1,step);
+        for(let k=0;k<cuts.length-1;k++){const a=cuts[k],c=cuts[k+1];const w=s.ax==='u'?(s.out>0?[s.at-TW,s.at+e]:[s.at-e,s.at+TW]):null,h=s.ax==='v'?(s.out>0?[s.at-TW,s.at+e]:[s.at-e,s.at+TW]):null;
+          const bx=s.ax==='u'?lbox(b,w[0],w[1],a,c,y0,top):lbox(b,a,c,h[0],h[1],y0,top);const n=s.ax==='u'?dirW(b,s.out,0):dirW(b,0,s.out);
+          P({...bx,k:'ext',f,m:s.style,nx:n[0],nz:n[1],lu:s.ax==='u'?s.at-s.out*.5:(a+c)/2,lv:s.ax==='u'?(a+c)/2:s.at-s.out*.5,len:c-a})}})}
+      else if(s.kind==='rail'){const bx=s.ax==='u'?lbox(b,s.at-.05,s.at+.05,s.s0,s.s1,y0,y0+1.1):lbox(b,s.s0,s.s1,s.at-.05,s.at+.05,y0,y0+1.1);P({...bx,k:'rail',f,m:'rail'})}
+      else{const L=s.s1-s.s0;let gaps=[];if(s.door&&L>=2.2)gaps=L>=6?[[s.s0+.6,s.s0+1.6],[s.s1-1.6,s.s1-.6]]:[[s.s0+.5,s.s0+1.4]];
+        let pieces=[[s.s0,s.s1]];gaps.forEach(([g0,g1])=>{pieces=pieces.flatMap(([a,c])=>g1<=a||g0>=c?[[a,c]]:[[a,g0],[g1,c]].filter(p=>p[1]-p[0]>.05))});
+        pieces.forEach(([a,c])=>{const cuts=splitLen(a,c,5);for(let k=0;k<cuts.length-1;k++){const bx=s.ax==='u'?lbox(b,s.at-TP/2,s.at+TP/2,cuts[k],cuts[k+1],y0,wallTop):lbox(b,cuts[k],cuts[k+1],s.at-TP/2,s.at+TP/2,y0,wallTop);P({...bx,k:'part',f,m:'part'})}})}});
+    // floor slab (floors above ground)
+    if(fi>0){const flag=new Int32Array(id.length);for(let k=0;k<id.length;k++)flag[k]=id[k]>=0&&rooms[id[k]].t!=='void'?1:0;
+      rectsOf(g,flag).forEach(r=>{splitLen(r.u0,r.u1,6.5).forEach((a,ia,A)=>{if(ia===A.length-1)return;splitLen(r.v0,r.v1,6.5).forEach((c,ic,C)=>{if(ic===C.length-1)return;
+        P({...lbox(b,a,A[ia+1],c,C[ic+1],y0-SLAB,y0),k:'slab',f,m:'slab'})})})})}
+    // roof over whatever the next floor does not cover
+    const up=b.floors[fl[fi+1]]||[];const g2=grid([rooms,up]),i1=cover(g2,rooms),i2=cover(g2,up);
+    const flag=new Int32Array(i1.length);for(let k=0;k<i1.length;k++)flag[k]=i1[k]>=0&&i2[k]<0?(rooms[i1[k]].t==='conn'?2:1):0;
+    {const rr=rectsOf(g2,flag),yT=y0+fh;
+      rr.forEach(r=>{splitLen(r.u0,r.u1,6.5).forEach((a,ia,A)=>{if(ia===A.length-1)return;splitLen(r.v0,r.v1,6.5).forEach((c,ic,C)=>{if(ic===C.length-1)return;
+        P({...lbox(b,a,A[ia+1],c,C[ic+1],yT-SLAB,yT),k:'roof',f,m:r.k===2?'glassroof':'roof:'+b.roof})})});
+        if(b.solar&&r.k===1&&!up.length&&(r.u1-r.u0)>4.4&&(r.v1-r.v0)>4.4)GEN.solar.push({b,r,y:yT})});
+      if(!b.gym&&!b.hip){const rid=new Int32Array(flag.length);for(let k=0;k<flag.length;k++)rid[k]=flag[k]?1:(i2[k]>=0?2:-1);
+        edges(g2,rid).forEach(s=>{if(!((s.a===1&&s.c===-1)||(s.c===1&&s.a===-1)))return;const out=s.a===1?1:-1;
+          const bx=s.ax==='u'?lbox(b,out>0?s.at-TW:s.at,out>0?s.at:s.at+TW,s.s0,s.s1,yT,yT+PARA):lbox(b,s.s0,s.s1,out>0?s.at-TW:s.at,out>0?s.at:s.at+TW,yT,yT+PARA);
+          if(bx.sx*bx.sz>1e-4)P({...bx,k:'para',f,m:'para'})})}}
+  });
+  b.bbox=bb;b.top=topY;b.cx=(bb[0]+bb[2])/2;b.cz=(bb[1]+bb[3])/2;
+}
+// small buildings on sloping ground stand on a level pad cut at the height of the ground under their middle
+BLD.forEach(b=>{if(!b.pad)return;let bb=[1e9,1e9,-1e9,-1e9];b.floors[1].forEach(r=>{const w=wRect(b,r.u0,r.v0,r.u1,r.v1);bb=[Math.min(bb[0],w[0]),Math.min(bb[1],w[1]),Math.max(bb[2],w[2]),Math.max(bb[3],w[3])]});
+  if(b.base==='auto')b.base=Math.round(GH((bb[0]+bb[2])/2,(bb[1]+bb[3])/2)*10)/10;PADS.push({x0:bb[0]-2,z0:bb[1]-2,x1:bb[2]+2,z1:bb[3]+2,h:b.base})});
+BLD.forEach(b=>floorList(b).forEach(f=>{const y0=y0Of(b,f),y1=y0+fhOf(b,f);b.floors[f].forEach(r=>{if(r.t==='void')return;const w=wRect(b,r.u0,r.v0,r.u1,r.v1);ROOMW.push({b,t:r.t,x0:w[0],z0:w[1],x1:w[2],z1:w[3],y0,y1})})}));
+BLD.forEach(genBuilding);
+// building-specific extras from the drawings
+{const m=BLD.find(b=>b.id==='mandae');[25,30,35,40,45,50,55].forEach(u=>{const[x,z]=toW(m,u,21.9);GEN.parts.push({b:m,k:'col',f:1,m:'col',round:true,x,z,y:(3*3.6-SLAB)/2,sx:.9,sz:.9,sy:3*3.6-SLAB})});
+ const g=BLD.find(b=>b.id==='gwichon');[[36.1,.4],[43.8,.4],[52.5,.4],[36.1,14.8],[43.8,14.8],[48.3,14.8],[52.8,14.8],[59.1,14.8]].forEach(([u,v])=>{const[x,z]=toW(g,u,v);GEN.parts.push({b:g,k:'col',f:1,m:'col',x,z,y:(3.6-SLAB)/2,sx:.6,sz:.6,sy:3.6-SLAB})});
+ const gy=BLD.find(b=>b.id==='gym');{const[x0,z0,x1,z1]=wRect(gy,-1.8,-1.8,46.8,36.8);const yT=y0Of(gy,3);
+   GEN.parts.push({b:gy,k:'roof',f:2,m:'roof:'+gy.roof,x:(x0+x1)/2,z:(z0+z1)/2,y:yT+.2,sx:x1-x0,sz:z1-z0,sy:.4});
+   const[a0,c0,a1,c1]=wRect(gy,-5.25,6,0,29);GEN.parts.push({b:gy,k:'slab',f:1,m:'slab',x:(a0+a1)/2,z:(c0+c1)/2,y:gy.base-.15,sx:a1-a0,sz:c1-c0,sy:.3})}
+}
+
+// ---------- facade textures and materials ----------
+const TILE=96,BAYS=8,FLOORS=5,FHT=3.6;
+const nightMats=[];
+function facadeTex(wall,seedv,style){
+  seed=seedv;const W=TILE*BAYS,H=TILE*FLOORS;
+  const [c,x]=canvas(W,H),[e,ex]=canvas(W,H),[bm,bx]=canvas(W,H);
+  x.fillStyle='#bfae9c';x.fillRect(0,0,W,H);bx.fillStyle='#9a9a9a';bx.fillRect(0,0,W,H);
+  for(let r=0;r*4<H;r++){const off=(r%2)*6;for(let k=-1;k*12<W;k++){x.fillStyle=shade(wall,rr(.84,1.1));x.fillRect(k*12+off+.6,r*4+.6,10.8,2.8);bx.fillStyle='#b8b8b8';bx.fillRect(k*12+off+.6,r*4+.6,10.8,2.8)}}
+  ex.fillStyle='#000';ex.fillRect(0,0,W,H);
+  if(style!=='blank')for(let f=0;f<FLOORS;f++){const y0=H-(f+1)*TILE;
+    for(let b=0;b<BAYS;b++){const wx=b*TILE+13,ww=70,wy=y0+20,wh=52;
+      x.fillStyle='#ebe5d6';x.fillRect(wx-5,wy-10,ww+10,8);x.fillStyle='#e9e4d5';x.fillRect(wx-3,wy+wh,ww+6,4);
+      x.fillStyle=shade(wall,.45);x.fillRect(wx-1,wy-2,ww+2,wh+2);x.fillStyle='#ece6d4';x.fillRect(wx,wy,ww,wh);
+      const gr=x.createLinearGradient(0,wy,0,wy+wh);gr.addColorStop(0,'#55626c');gr.addColorStop(1,'#8b9aa5');
+      for(let q=0;q<4;q++){const px=wx+2+q*16.5;x.fillStyle=gr;x.fillRect(px+1.5,wy+2,13.5,wh-4);if(rnd()<.55){x.fillStyle=rnd()<.7?'#f1efe8':'#d9dde0';x.fillRect(px+1.5,wy+wh*.3,13.5,(wh*.7-3)*rr(.5,1))}}
+      x.fillStyle='#ece6d4';x.fillRect(wx,wy+wh*.3-1.5,ww,3);x.globalAlpha=.12;x.fillStyle='#fff';x.fillRect(wx+4,wy+3,12,wh-6);x.globalAlpha=1;
+      bx.fillStyle='#2a2a2a';bx.fillRect(wx,wy,ww,wh);bx.fillStyle='#e6e6e6';bx.fillRect(wx-5,wy-10,ww+10,8);bx.fillRect(wx-3,wy+wh,ww+6,4);
+      if(rnd()<.42){ex.fillStyle=rnd()<.8?'#ffd8a0':'#dfeaff';ex.globalAlpha=rr(.6,1);ex.fillRect(wx+2,wy+2,ww-4,wh-4);ex.globalAlpha=1}}}
+  return {map:tex(c),em:tex(e),bump:dataTex(bm)}}
+function ribbonTex(wall){seed=909;const W=TILE*BAYS;const [c,x]=canvas(W,TILE),[e,ex]=canvas(W,TILE);
+  x.fillStyle='#bfae9c';x.fillRect(0,0,W,TILE);for(let r=0;r*4<TILE;r++){const off=(r%2)*6;for(let k=-1;k*12<W;k++){x.fillStyle=shade(wall,rr(.84,1.1));x.fillRect(k*12+off+.6,r*4+.6,10.8,2.8)}}
+  ex.fillStyle='#000';ex.fillRect(0,0,W,TILE);x.fillStyle='#ece7da';x.fillRect(0,14,W,9);x.fillRect(0,70,W,7);
+  const gr=x.createLinearGradient(0,23,0,70);gr.addColorStop(0,'#3f4c57');gr.addColorStop(1,'#7c8d9a');x.fillStyle=gr;x.fillRect(0,23,W,47);
+  for(let i=0;i<W;i+=24){x.fillStyle='#e4dfd2';x.fillRect(i,23,3,47);if(rnd()<.5){x.fillStyle='#eeece6';x.fillRect(i+3,38,21,32*rr(.4,1))}if(rnd()<.45){ex.fillStyle='#ffdcaa';ex.fillRect(i+3,23,21,47)}}
+  x.fillStyle='#e4dfd2';x.fillRect(0,36,W,2);return {map:tex(c),em:tex(e)}}
+// gym (photo 0741): dark brick with a ribbon of clerestory windows just under the overhanging fascia band
+function gymTex(wall){seed=313;const W=192,H=460;const [c,x]=canvas(W,H),[e,ex]=canvas(W,H);const yy=m=>H-m*40;
+  x.fillStyle='#8f7f72';x.fillRect(0,0,W,H);for(let r=0;r*5<H;r++){const off=(r%2)*8;for(let k=-1;k*16<W;k++){x.fillStyle=shade(wall,rr(.82,1.12));x.fillRect(k*16+off+.8,r*5+.8,14.4,3.6)}}
+  x.fillStyle='#9d968c';x.fillRect(0,yy(.9),W,.9*40);x.fillStyle='#b9b2a6';x.fillRect(0,yy(.95),W,4);
+  ex.fillStyle='#000';ex.fillRect(0,0,W,H);
+  const gr=x.createLinearGradient(0,yy(9.3),0,yy(7.7));gr.addColorStop(0,'#2b3742');gr.addColorStop(1,'#62788a');x.fillStyle=gr;x.fillRect(0,yy(9.3),W,1.6*40);
+  for(let i=0;i<W;i+=24){x.fillStyle='#dfe2e2';x.fillRect(i,yy(9.3),3,1.6*40)}x.fillStyle='#dfe2e2';x.fillRect(0,yy(9.3),W,3);x.fillRect(0,yy(7.7)-3,W,3);
+  ex.fillStyle='#ffe6b8';ex.fillRect(0,yy(9.3),W,1.6*40);
+  return {map:tex(c),em:tex(e)}}
+// two-storey dining hall (이산관 north side, photos 0952/0955): one tall black-framed window per 5 m bay, 3 panes across, 4 high
+function bigTex(wall){seed=717;const W=TILE*BAYS,H=138,k=W/40;const [c,x]=canvas(W,H),[e,ex]=canvas(W,H);const Y=m=>H*(1-m/7.2);
+  x.fillStyle='#bfae9c';x.fillRect(0,0,W,H);for(let r=0;r*4<H;r++){const off=(r%2)*6;for(let q=-1;q*12<W;q++){x.fillStyle=shade(wall,rr(.84,1.1));x.fillRect(q*12+off+.6,r*4+.6,10.8,2.8)}}
+  ex.fillStyle='#000';ex.fillRect(0,0,W,H);
+  for(let b=0;b<8;b++){const x0=b*5*k+.75*k,w=3.5*k,y0=Y(6.3),h=Y(.9)-Y(6.3);
+    x.fillStyle='#e9e4d5';x.fillRect(x0-3,Y(.9),w+6,3);x.fillStyle='#1f2326';x.fillRect(x0,y0,w,h);
+    const gr=x.createLinearGradient(0,y0,0,y0+h);gr.addColorStop(0,'#6f8fa8');gr.addColorStop(.6,'#9db8c6');gr.addColorStop(1,'#56707f');
+    const rows=[6.2,4.95,3.7,2.45,1.0];for(let j=0;j<4;j++)for(let i=0;i<3;i++){const px=x0+2+i*(w-4)/3,py=Y(rows[j])+1,ph=Y(rows[j+1])-Y(rows[j])-2;x.fillStyle=gr;x.fillRect(px+1,py,(w-4)/3-2,ph);
+      if(rnd()<.35){x.globalAlpha=.18;x.fillStyle='#fff';x.fillRect(px+3,py+2,4,ph-4);x.globalAlpha=1}}
+    ex.fillStyle='#ffe2b0';ex.globalAlpha=.85;ex.fillRect(x0+2,y0+2,w-4,h-4);ex.globalAlpha=1}
+  return {map:tex(c),em:tex(e)}}
+function roofTex(colr){const [c,x]=canvas(256,256);x.fillStyle=colr;x.fillRect(0,0,256,256);speckle(x,256,256,5000,[shade(colr,.85),shade(colr,1.12)],.5);
+  x.strokeStyle=shade(colr,.9);x.lineWidth=1;for(let i=0;i<256;i+=32){x.beginPath();x.moveTo(i,0);x.lineTo(i,256);x.stroke()}return tex(c)}
+function glassRoofTex(){const [c,x]=canvas(128,128);x.fillStyle='#8fa6b4';x.fillRect(0,0,128,128);x.strokeStyle='#d8dde0';x.lineWidth=4;
+  for(let i=0;i<=128;i+=32){x.beginPath();x.moveTo(i,0);x.lineTo(i,128);x.stroke();x.beginPath();x.moveTo(0,i);x.lineTo(128,i);x.stroke()}return tex(c)}
+// instanced facade: UVs from each instance's resting place in its building, so the wall pattern stays continuous across pieces
+function facadeMat(opts,uS,vS,key){const m=new THREE.MeshStandardMaterial(opts);
+  m.onBeforeCompile=sh=>{sh.uniforms.uS={value:uS};sh.uniforms.vS={value:vS};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec3 aRest;\nattribute vec3 aSize;\nuniform float uS;\nuniform float vS;')
+      .replace('#include <uv_vertex>',`#include <uv_vertex>
+      vec3 rp=aRest+position*aSize;
+      vec2 fu=abs(normal.z)>.5?vec2(rp.x*sign(normal.z),rp.y):(abs(normal.x)>.5?vec2(-rp.z*sign(normal.x),rp.y):vec2(rp.x,rp.z));
+      fu=vec2(fu.x/uS,fu.y/vS);
+      #ifdef USE_MAP
+      vMapUv=fu;
+      #endif
+      #ifdef USE_BUMPMAP
+      vBumpMapUv=fu;
+      #endif
+      #ifdef USE_EMISSIVEMAP
+      vEmissiveMapUv=fu;
+      #endif`)};
+  m.userData.uS=uS;m.userData.vS=vS;m.userData.facade=true;m.customProgramCacheKey=()=>'facade-'+key;if(opts.emissiveMap)nightMats.push(m);return m}
+const MAT={};
+const plainMat=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.88},o||{}));
+const M_slabSide=plainMat(0xe6e0d2),M_slabTop=plainMat(0xcfc8bb),M_ceiling=plainMat(0xf2efe8),M_part=plainMat(0xefebe3,{roughness:.9}),M_cope=plainMat(0xf2efe8,{roughness:.6}),
+  M_col=plainMat(0xefebe2,{roughness:.7}),M_rail=plainMat(0x9aa2a8,{metalness:.5,roughness:.4}),M_glassRoof=facadeMat({map:glassRoofTex(),roughness:.2,metalness:.3,envMapIntensity:1.1},3,3,'glass');
+function buildingMats(b,i){if(b.mats)return b.mats;const o={};
+  if(b.gym){const t=gymTex(b.wall);o.gym=facadeMat({map:t.map,emissiveMap:t.em,emissive:0xffffff,emissiveIntensity:0,roughness:.75,metalness:.15,envMapIntensity:.6},b.bay*4,11.5,b.id+'g')}
+  else{const tw=facadeTex(b.wall,1000+i*77,'win'),tb=facadeTex(b.wall,1500+i*77,'blank');
+    o.win=facadeMat({map:tw.map,bumpMap:tw.bump,bumpScale:1.6,emissiveMap:tw.em,emissive:0xffffff,emissiveIntensity:0,roughness:.85,metalness:0,envMapIntensity:.6},b.bay*BAYS,FHT*FLOORS,b.id+'w');
+    o.blank=facadeMat({map:tb.map,bumpMap:tb.bump,bumpScale:1.6,roughness:.88,metalness:0,envMapIntensity:.55},b.bay*BAYS,FHT*FLOORS,b.id+'b');
+    const bt=bigTex(b.wall);o.big=facadeMat({map:bt.map,emissiveMap:bt.em,emissive:0xffffff,emissiveIntensity:0,roughness:.5,metalness:.1,envMapIntensity:.9},40,7.2,b.id+'big');
+    const rt=ribbonTex(b.wall);o.ribbon=facadeMat({map:rt.map,emissiveMap:rt.em,emissive:0xffffff,emissiveIntensity:0,roughness:.55,metalness:.12,envMapIntensity:.85},b.bay*BAYS,FHT,b.id+'r')}
+  const brick=plainMat(new THREE.Color(b.wall).multiplyScalar(.93));o.para=[brick,brick,M_cope,brick,brick,brick];
+  o.roof=facadeMat({map:roofTex(b.roof),roughness:.9,envMapIntensity:.4},8,8,b.id+'roof');
+  o.roofArr=[brick,brick,o.roof,M_ceiling,brick,brick];
+  b.mats=o;return o}
+function matFor(p){const o=buildingMats(p.b,BLD.indexOf(p.b));
+  switch(p.m){case'win':case'blank':case'ribbon':case'gym':case'big':return {mat:o[p.m],facade:true};
+    case'part':return{mat:M_part};case'rail':return{mat:M_rail};case'col':return{mat:M_col};
+    case'slab':return{mat:[M_slabSide,M_slabSide,M_slabTop,M_ceiling,M_slabSide,M_slabSide]};
+    case'para':return{mat:o.para};case'glassroof':return{mat:[M_slabSide,M_slabSide,M_glassRoof,M_ceiling,M_slabSide,M_slabSide]};
+    default:return{mat:o.roofArr,roofTex:true}}}
+const facadeUS=p=>p.m==='gym'?p.b.bay*4:p.m==='big'?40:p.b.bay*BAYS,facadeVS=p=>p.m==='gym'?11.5:p.m==='big'?7.2:p.m==='ribbon'?FHT:FHT*FLOORS;
+// facade geometry needs world-aligned roof UVs too
+const FLOOR_COL={class:'#c8a274',office:'#a9a49a',exec:'#8f6d54',health:'#cfd6d8',meeting:'#b9a68a',lab:'#a3aaa9',library:'#b48a5c',computer:'#9aa3ab',cafe:'#cfc8b8',kitchen:'#b9c0c2',dorm:'#c49d72',judo:'#3f7fbf',music:'#b88c5a',art:'#c9c0ad',stair:'#aaa59b',toilet:'#d6dde0',hall:'#bab6ad',conn:'#bdb8ae',exhibit:'#b8aa98',storage:'#a8a296',stage:'#9c7650',seats:'#7d8a80'};
+function furnish(b,fl,y0){
+  const out=[];const {W,lx}=fl;
+  const box=(u,v,y,su,sv,h,c)=>{const [x,z]=W(u,v);out.push({x,y:y0+y+h/2,z,sx:lx?su:sv,sy:h,sz:lx?sv:su,c})};
+  fl.rooms.forEach(r=>{
+    if(r.t==='void')return;
+    const uw=r.u1-r.u0,vw=r.v1-r.v0,uc=(r.u0+r.u1)/2,vc=(r.v0+r.v1)/2;
+    if(r.t!=='court')box(uc,vc,0,uw,vw,.04,FLOOR_COL[r.t]||'#bab6ad');
+    if(r.t==='court'&&uw*vw<400){box(uc,vc,0,uw,vw,.06,'#c99a5a');return}
+    const desks=(rows,cols,ua,ub,va,vb,deskC,chairC)=>{for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const u=rows>1?ua+(ub-ua)*i/(rows-1):ua,v=cols>1?va+(vb-va)*j/(cols-1):va;
+      box(u,v,.69,.46,.62,.05,deskC);box(u,v,0,.36,.52,.69,'#8b8f93');box(u+.44,v,.42,.4,.4,.05,chairC);box(u+.64,v,.45,.05,.38,.42,chairC)}};
+    switch(r.t){
+      case 'exhibit':for(let u=r.u0+2;u<r.u1-1.5;u+=3)for(let v=r.v0+2;v<r.v1-1.5;v+=3){box(u,v,0,.8,.8,1,'#e9e4d8');box(u,v,1,.7,.7,.5,'#b9d0d8')}box(r.u0+.25,vc,.6,.08,vw-1.5,1.4,'#c94b3c');break;
+      case 'storage':if(uw>2.5&&vw>2.5)for(let u=r.u0+.8;u<r.u1-.6;u+=1.6)box(u,r.v0+.4,0,1.2,.5,1.8,'#9a8f7d');break;
+      case 'stage':box(uc,vc,0,uw-.2,vw-.2,1.1,'#8a6440');break;
+      case 'seats':{const lx2=uw>vw;for(let k=0;k<4;k++){if(lx2)box(uc,r.v0+.6+k*.95,k*.35,uw-.4,.9,.35,'#2f6b4a');else box(r.u0+.6+k*.95,vc,k*.35,.9,vw-.4,.35,'#2f6b4a')}break}
+      case 'class':case 'music':
+        box(r.u0+.07,vc,1,.06,Math.min(4.2,vw-2),1.2,'#2f5e45');box(r.u0+1.5,vc,0,.7,1.4,.78,'#9a7450');
+        if(r.t==='music'){box(r.u0+1.6,r.v0+1.4,0,1.5,.7,1.05,'#1b1b1d');desks(3,5,r.u0+3.4,r.u1-2,r.v0+1.4,r.v1-1.4,'#a07a52','#2f2f33')}
+        else desks(5,5,r.u0+3,r.u1-1.9,r.v0+1.2,r.v1-1.2,'#c9a46a','#3d6fa8');
+        box(r.u1-.25,vc,0,.4,vw-1.4,1.1,'#7f97a8');break;
+      case 'office':for(let u=r.u0+1.6;u<r.u1-1.2;u+=2.4)for(let v=r.v0+1.4;v<r.v1-1;v+=1.6){box(u,v,0,1.3,.75,.74,'#d9d4c8');box(u,v,.74,.35,.06,.32,'#26303a');box(u+.85,v,0,.45,.45,.45,'#3c4044')}
+        box(r.u1-.3,vc,0,.45,vw-1,1.9,'#a7acb0');break;
+      case 'exec':box(r.u0+2,vc,0,.9,1.8,.76,'#5e3f2a');box(r.u0+2.9,vc,0,.6,.6,.6,'#2b2b2b');box(r.u1-2.4,vc,0,1.1,.8,.4,'#6e5240');box(r.u1-2.4,vc-1.3,0,.8,1.9,.45,'#3f2f27');box(r.u1-2.4,vc+1.3,0,.8,1.9,.45,'#3f2f27');box(r.u0+.25,vc,0,.4,vw-1.6,2,'#7a5a43');break;
+      case 'health':[r.v0+1,r.v1-1].forEach(v=>{box(uc,v,0,2,.95,.55,'#d8d8d4');box(uc,v,.55,1.9,.9,.12,'#f1f4f6')});box(r.u0+.6,vc,0,.6,1.2,.76,'#d9d4c8');break;
+      case 'meeting':box(uc,vc,0,Math.min(6,Math.max(1.2,uw-3.6)),Math.min(1.4,vw-2.4),.74,'#8e7356');for(let u=uc-Math.min(6,uw-3.6)/2+.4;u<uc+Math.min(6,uw-3.6)/2;u+=1.1)[vc-1.2,vc+1.2].forEach(v=>box(u,v,0,.45,.45,.48,'#3c4044'));break;
+      case 'lab':box(r.u0+.07,vc,1,.06,Math.min(4.2,vw-2),1.2,'#2f5e45');for(let i=0;i<3;i++)for(let j=0;j<2;j++){const u=r.u0+3+i*(uw-4.5)/2,v=r.v0+vw*(.3+.4*j);box(u,v,0,1.2,2.4,.86,'#d9d6cf');box(u,v,.86,1.25,2.45,.05,'#2c2f33');box(u+.9,v,0,.35,.35,.62,'#3f6f9a');box(u-.9,v,0,.35,.35,.62,'#3f6f9a')}box(r.u1-.3,vc,0,.5,vw-1,1.9,'#e7e4dc');break;
+      case 'library':for(let u=r.u0+1.2;u<r.u0+uw*.55;u+=1.7){box(u,vc,0,.45,vw-2.4,2,'#8a6a45');box(u,vc,1.2,.5,vw-2.4,.06,'#d7cdb8')}for(let u=r.u0+uw*.62;u<r.u1-1.4;u+=2.6)for(let v=r.v0+1.8;v<r.v1-1.4;v+=3.2){box(u,v,0,1.2,2.2,.74,'#b48a5c');[-.9,.9].forEach(dv=>box(u+.9,v+dv,0,.42,.42,.45,'#3d6fa8'))}break;
+      case 'computer':for(let u=r.u0+1.5;u<r.u1-1;u+=1.9){box(u,vc,0,.7,vw-1.6,.74,'#e2ded4');for(let v=r.v0+1.2;v<r.v1-1;v+=.85){box(u-.1,v,.74,.06,.5,.36,'#1e2328');box(u+.55,v,0,.4,.4,.46,'#2f2f33')}}break;
+      case 'cafe':for(let u=r.u0+1.6;u<r.u1-1.2;u+=2.6){box(u,vc,0,.85,vw-2.4,.74,'#ece8de');[-.75,.75].forEach(du=>box(u+du,vc,0,.35,vw-2.6,.44,'#6f8fa8'))}break;
+      case 'kitchen':box(uc,r.v0+.5,0,uw-1,.8,.9,'#b8bec2');box(uc,r.v1-.5,0,uw-1,.8,.9,'#b8bec2');box(uc,vc,0,uw*.5,1.4,.9,'#c9ced2');for(let k=0;k<3;k++)box(r.u0+1.5+k*(uw-3)/2,r.v0+.5,.9,.7,.7,.5,'#8f969b');break;
+      case 'dorm':box(r.u0+1.3,r.v0+.6,0,2.1,.95,.5,'#9c7650');box(r.u0+1.3,r.v0+.6,.5,2,.9,.14,'#eef0f2');box(r.u0+1.3,r.v1-.6,0,2.1,.95,.5,'#9c7650');box(r.u0+1.3,r.v1-.6,.5,2,.9,.14,'#e8eef6');
+        box(r.u1-.5,r.v0+.7,0,.6,1.1,.74,'#c9a46a');box(r.u1-.5,r.v1-.7,0,.6,1.1,.74,'#c9a46a');break;
+      case 'judo':box(uc,vc,.04,uw-1,vw-1,.08,'#d24c3a');box(uc,vc,.06,uw-2.6,vw-2.6,.08,'#3e8e5a');break;
+      case 'art':for(let i=0;i<2;i++)for(let j=0;j<2;j++)box(r.u0+uw*(.3+.4*i),r.v0+vw*(.3+.4*j),0,1.8,1.2,.74,'#ddd2bd');for(let k=0;k<4;k++)box(r.u1-1.2,r.v0+1+k*(vw-2)/3,0,.12,.7,1.6,'#a0784f');break;
+      case 'toilet':for(let k=0;k<3;k++)box(r.u0+.9,r.v0+1+k*1.3,0,1.6,.05,1.9,'#9fb7c6');box(r.u1-.4,vc,0,.5,vw-1.5,.85,'#e9ecee');break;
+      case 'stair':{const n=10,st=(uw-1)/n,half=vw/2;for(let i=0;i<n;i++){box(r.u0+.5+st*(i+.5),r.v0+half/2,0,st,half-.2,(i+1)*fl.fh/2/n,'#bdb8ae');box(r.u1-.5-st*(i+.5),r.v1-half/2,fl.fh/2,st,half-.2,(i+1)*fl.fh/2/n,'#bdb8ae')}box(r.u1-.5,vc,0,1,vw-.4,fl.fh/2,'#b4afa5');break}
+      case 'court':{box(uc,vc,0,uw,vw,.06,'#c99a5a');const wl=(u,v,su,sv)=>box(u,v,.06,su,sv,.02,'#f4f1ea');wl(uc,r.v0+4,uw-8,.12);wl(uc,r.v1-4,uw-8,.12);wl(r.u0+4,vc,.12,vw-8);wl(r.u1-4,vc,.12,vw-8);wl(uc,vc,.12,vw-8);
+        [r.u0+3,r.u1-3].forEach((u,i)=>{box(u+(i?.3:-.3),vc,0,.2,.2,3.4,'#3b4046');box(u,vc,3.1,.08,1.8,1.05,'#f4f6f7');box(u+(i?-.35:.35),vc,3.05,.45,.45,.04,'#e0562e')});
+        box(r.u0+1.6,r.v0+vw*.15,0,2.4,vw*.25,1.1,'#7a5537');break}
+    }
+  });
+  return out;
+}
+
+// ---------- ground: a painted site plan (true metres; x east, z south), traced from a satellite photo ----------
+const GS=400,GW=(Math.min(innerWidth,innerHeight)<700?2048:4096),gs=GW/GS;const GX=x=>(x+GS/2)*gs,GZ=z=>(z+GS/2)*gs;
+const [gc,g]=canvas(GW,GW);
+function rect(x0,z0,x1,z1,c){g.fillStyle=c;g.fillRect(GX(x0),GZ(z0),(x1-x0)*gs,(z1-z0)*gs)}
+function poly(pts,c){g.fillStyle=c;g.beginPath();pts.forEach(([x,z],i)=>i?g.lineTo(GX(x),GZ(z)):g.moveTo(GX(x),GZ(z)));g.closePath();g.fill()}
+function polyline(pts,w,c,dash){g.strokeStyle=c;g.lineWidth=w*gs;g.lineCap='round';g.lineJoin='round';g.setLineDash(dash?dash.map(d=>d*gs):[]);g.beginPath();pts.forEach(([x,z],i)=>i?g.lineTo(GX(x),GZ(z)):g.moveTo(GX(x),GZ(z)));g.stroke();g.setLineDash([])}
+function stadium(r){const{x,z,half}=FIELD;g.beginPath();g.moveTo(GX(x-r),GZ(z-half));g.lineTo(GX(x-r),GZ(z+half));g.arc(GX(x),GZ(z+half),r*gs,Math.PI,0,true);g.lineTo(GX(x+r),GZ(z-half));g.arc(GX(x),GZ(z-half),r*gs,0,Math.PI,true);g.closePath()}
+const CANOPIES=[-79,-63,-47,-3,13],CANOPY_AT=z=>CANOPIES.some(c=>Math.abs(z-c)<7)||Math.abs(z+26)<9;
+const inPoly=(x,z,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const[xi,zi]=P[i],[xj,zj]=P[j];if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c}return c};
+const GRASS='#7fa357',LAWN='#93a65c',WOODS='#5f7c46',PAVE='#cfcabf',ASPH='#86888a',BRICKP='#b9775c',SAND='#d9cfb9',DRY='#b4a777',CONC='#c3bfb5';
+rect(-GS/2,-GS/2,GS/2,GS/2,'#bdb8ac');speckle(g,GW,GW,90000,['#a9a49a','#cbc6bb','#b3ad9f'],.5);
+// streets round the campus: north road, east road, south road and the diagonal west street with its red-brick pavement
+const street=(pts,w,mark)=>{polyline(pts,w+3,'#c8c4ba');polyline(pts,w,'#4d4f52');polyline(pts,.15,mark||'#e8e6dd',[3,3])};
+const westRoad=[[-128,-210],[-128,-120],[-127.5,0],[-121,42],[-108,86],[-96,126],[-89,162],[-85,210]];
+[[[-210,-120.5],[210,-120.5]],[[119,-210],[119,210]],[[-210,159],[210,159]]].forEach(r=>street(r,8));street(westRoad,8,'#e8d48a');
+const westWalk=[[-119.5,-121],[-119,0],[-112.5,42],[-99.5,86],[-87.5,126],[-80.5,162]];polyline(westWalk,6,'#a85a43');polyline(westWalk,5,'#b36450',[.5,.5]);
+// the campus, its wooded edges and lawns
+const CAMPUS=[[-116,-116],[114,-116],[114,155],[-77,155],[-84,126],[-96,86],[-109,42],[-115.5,0]];poly(CAMPUS,PAVE);
+const WOOD=[[[-116,-116],[-12,-116],[-12,-94],[-116,-94]],
+  [[-116,-94],[-104.5,-94],[-104.5,28],[-86.8,31],[-86.8,80],[-84,104],[-65,108],[-65,152],[-77,155],[-84,126],[-96,86],[-109,42],[-115.5,0]],
+  [[21,-116],[114,-116],[114,-104],[21,-104]],[[107,-104],[114,-104],[114,58],[107,58]],[[25,58],[114,58],[114,155],[26,155],[25.5,104]]];
+WOOD.forEach(p=>poly(p,WOODS));
+rect(26,52,46,80,PAVE);rect(28,80,44,84,'#86a95c');
+// red clay court in the woods south-east of the field
+rect(34,107,50,148,'#9a5b3f');g.strokeStyle='rgba(255,255,255,.7)';g.lineWidth=.12*gs;g.strokeRect(GX(35.5),GZ(109),14*gs,37*gs);polyline([[35.5,127.5],[49.5,127.5]],.12,'rgba(255,255,255,.7)');
+// field (photos 0755/0763/0790): a light sand ring, dry grass inside it beyond both goal ends, a muted green artificial-turf pitch
+stadium(FIELD.r+3.6);g.fillStyle='#7d9a52';g.fill();stadium(FIELD.r+1.2);g.fillStyle='#b9b09c';g.fill();stadium(FIELD.r);g.fillStyle=SAND;g.fill();
+{g.save();stadium(FIELD.r-7);g.clip();g.beginPath();g.rect(GX(0),GZ(-200),200*gs,(FIELD.turf[1]-3+200)*gs);g.rect(GX(0),GZ(FIELD.turf[3]+3),200*gs,200*gs);g.clip();g.fillStyle=DRY;g.fillRect(0,0,GW,GW);speckle(g,GW,GW,40000,['#9d955f','#c9bd8c'],.5);g.restore()}
+{g.save();stadium(FIELD.r);g.clip();speckle(g,GW,GW,60000,['#c8bea6','#e8e1d0'],.35);g.restore()}
+{const[a0,c0,a1,c1]=FIELD.turf,n=14,h=(c1-c0)/n;for(let i=0;i<n;i++)rect(a0,c0+i*h,a1,c0+(i+1)*h,i%2?'#4b8752':'#56925c');
+  const cx=(a0+a1)/2,cz=(c0+c1)/2,L0=a0+1.6,L1=a1-1.6,T0=c0+1.6,T1=c1-1.6;g.strokeStyle='#f4f4ef';g.lineWidth=.14*gs;g.strokeRect(GX(L0),GZ(T0),(L1-L0)*gs,(T1-T0)*gs);
+  polyline([[L0,cz],[L1,cz]],.14,'#f4f4ef');g.beginPath();g.arc(GX(cx),GZ(cz),8.5*gs,0,7);g.stroke();
+  [[T0,1],[T1,-1]].forEach(([zz,s])=>{g.strokeRect(GX(cx-19),GZ(s>0?zz:zz-15),38*gs,15*gs);g.strokeRect(GX(cx-9),GZ(s>0?zz:zz-5.5),18*gs,5.5*gs)})}
+// main road from the north gate down the west side of the field to the gym car park
+rect(20.4,-90,29,56,'#aeaca6');{for(let z=-90;z<56;z+=1.2)polyline([[20.4,z],[29,z]],.04,'#9b9993')}
+const ROAD=[[1.5,-117],[2.5,-108],[7,-100],[13.5,-94.5],[16.5,-88],[16.5,62],[17.5,72],[18,104]];
+polyline(ROAD,8.6,'#9a9c9c');polyline(ROAD,8,ASPH);polyline([[19.6,-86],[19.6,60]],.14,'#f2f1ea');polyline([[13.4,-86],[13.4,60]],.14,'#f2f1ea');polyline([[16.5,-86],[16.5,60]],.12,'#f2f1ea',[2.5,2.5]);
+// car parks: west of the main road, north-east lot by the gate, along the north wall of 청운관, round the courtyard and on the gym plateau
+const stalls=(x0,z0,x1,z1,alongX,step)=>{for(let t=(alongX?x0:z0);t<=(alongX?x1:z1)+.01;t+=step||2.5)polyline(alongX?[[t,z0],[t,z1]]:[[x0,t],[x1,t]],.1,'#f2f1ea')};
+rect(3,-60,12.4,26,ASPH);stalls(3,-60,8.2,26,false);
+rect(-12,-100,12.4,-56,ASPH);stalls(-10,-70,10,-64.5,true);stalls(-10,-62,10,-56.5,true);
+rect(-102,-93,-10,-76,ASPH);stalls(-100,-93,-14,-88,true);stalls(-100,-81,-14,-76,true);
+{g.fillStyle='#6f9a4a';g.beginPath();g.ellipse(GX(-1),GZ(-84),6*gs,4*gs,0,0,7);g.fill()}
+rect(-84,-54.5,-27.5,21,ASPH);rect(-27.5,-56,-5,-44.5,ASPH);stalls(-79,-54.5,-41,-49.5,true);stalls(-33,-46,-27.5,0,false);
+rect(-5,3,12.4,12,ASPH);rect(5.5,12,12.4,38.5,ASPH);rect(-95,32.6,12.4,38.5,ASPH);polyline([[-93,36.2],[10,36.2]],.12,'#f2f1ea');polyline([[-93,34.6],[10,34.6]],.12,'#f2f1ea',[2,2]);
+rect(-86.8,31,-78.6,82,ASPH);
+rect(-7.2,104,25,153,CONC);for(let x=-5;x<25;x+=4)polyline([[x,104],[x,153]],.05,'#aaa69c');stalls(2,146,23,151.5,true);stalls(6,124,20,129.5,true);
+// accessible bays (blue) at the 청운관 and 덕린관 entrances
+[[-9,-58,-5.5,-55],[-4,4,-0.5,8]].forEach(([a,b,c,d])=>rect(a,b,c,d,'#4f86c6'));
+// courtyard (중정): lawn with brick paths — two diagonals, an east–west path and a ring round the big centre tree
+const CC=[-59,-23];rect(-79,-48,-39,2,LAWN);
+{g.save();g.beginPath();g.rect(GX(-79),GZ(-48),40*gs,50*gs);g.clip();[[[-79,-48],[-39,2]],[[-39,-48],[-79,2]],[[-79,CC[1]],[-39,CC[1]]]].forEach(p=>polyline(p,2.6,BRICKP));g.restore()}
+g.strokeStyle=BRICKP;g.lineWidth=2.4*gs;g.beginPath();g.arc(GX(CC[0]),GZ(CC[1]),7.8*gs,0,7);g.stroke();g.fillStyle='#7c9a4f';g.beginPath();g.arc(GX(CC[0]),GZ(CC[1]),6.6*gs,0,7);g.fill();
+g.strokeStyle='#d9d6cc';g.lineWidth=.35*gs;g.strokeRect(GX(-79),GZ(-48),40*gs,50*gs);
+// topiary beds either side of the paved forecourt in front of 만대관's entrance
+rect(-5,-52,3,-31,'#7f9f52');rect(-5,-11,3,3,'#7f9f52');
+// garden south of 덕린관 (생명의 숲): lawn, paths, a rock-lined stream and a small pond
+const GARDEN=[[-58,39],[4,39],[4,77],[-58,77]];poly(GARDEN,LAWN);
+const STREAM=[[-50,62],[-44,55],[-37,50],[-29,46.5],[-19,43.5],[-9,42],[1,41.5]];
+polyline([[-56,42],[-46,48],[-33,53],[-18,51],[-4,56],[2,66]],1.6,'#d8c9a2');polyline([[-33,53],[-37,66],[-42,76]],1.4,'#d8c9a2');polyline([[-18,51],[-14,64],[-10,76]],1.4,'#d8c9a2');
+polyline(STREAM,2.6,'#8f8a7a');polyline(STREAM,1.6,'#6f93a3');
+g.fillStyle='#5f8798';g.beginPath();g.ellipse(GX(-24),GZ(64),6*gs,3.6*gs,0,0,7);g.fill();g.strokeStyle='#8f8a80';g.lineWidth=.6*gs;g.stroke();
+// gym plateau retaining wall line and the 9동 forecourt
+rect(-64,102.6,11.5,103.8,'#8f8a80');
+// contact shadow under every building
+BLD.forEach(b=>{Object.values(b.plan).length&&b.floors[1].forEach(r=>{const[x0,z0,x1,z1]=wRect(b,r.u0,r.v0,r.u1,r.v1);rect(x0-.8,z0-.8,x1+.8,z1+.8,'#a9a497')})});
+speckle(g,GW,GW,160000,['#000','#fff'],.06);
+const groundTex=tex(gc);
+const groundGeo=new THREE.PlaneGeometry(GS,GS,400,400);groundGeo.rotateX(-Math.PI/2);
+{const p=groundGeo.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,GH(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals()}
+const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({map:groundTex,roughness:.95,metalness:0,envMapIntensity:.5}));
+ground.receiveShadow=true;S.add(ground);
+const far=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),new THREE.MeshStandardMaterial({color:0xb4ae9f,roughness:1}));far.rotation.x=-Math.PI/2;far.position.y=-3;far.receiveShadow=true;S.add(far);
+{const m=new THREE.Mesh(new THREE.BoxGeometry(77.5,HILL+.6,.8),new THREE.MeshStandardMaterial({color:0xa7a299,roughness:.9}));m.position.set(-26.25,(HILL+.6)/2-.3,103.2);m.castShadow=m.receiveShadow=true;S.add(m)}
+
+// ---------- decor ----------
+const decorStart=S.children.length;
+const instAll=[];
+function inst(geo,mat,list,set){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length));m.count=list.length;instAll.push(m);list.forEach((p,i)=>{set(p,dummy);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix)});m.castShadow=m.receiveShadow=true;S.add(m);return m}
+const inRect=(x,z,bb,p)=>x>bb[0]-p&&x<bb[2]+p&&z>bb[1]-p&&z<bb[3]+p;
+function nearBuilding(x,z,p){return BLD.some(b=>b.floors[1].concat(b.floors[2]||[]).some(r=>{const w=wRect(b,r.u0,r.v0,r.u1,r.v1);return inRect(x,z,w,p)}))}
+// trees: woods, a ginkgo row along the north fence, a zelkova row along the south road, and the gardens
+const trees=[];seed=7;
+function forestIn(P,n,avoid,s0,s1){const xs=P.map(p=>p[0]),zs=P.map(p=>p[1]);for(let i=0;i<n;i++){const x=rr(Math.min(...xs),Math.max(...xs)),z=rr(Math.min(...zs),Math.max(...zs));
+  if(!inPoly(x,z,P)||(avoid&&avoid(x,z))||nearBuilding(x,z,3)||inStadium(x,z,3))continue;trees.push({x,z,s:rr(s0||.85,s1||1.35)})}}
+forestIn(WOOD[0],150);forestIn(WOOD[1],120);forestIn(WOOD[2],30);forestIn(WOOD[3],24);
+forestIn(WOOD[4],320,(x,z)=>(x>32&&x<52&&z>105&&z<150)||(x>25&&x<47&&z<82)||(x<30.5&&z>82&&z<115));
+forestIn(GARDEN,26,(x,z)=>Math.abs(z-(62-(x+50)*.36))<2.5||(x+24)**2/40+(z-64)**2/16<1.3,.7,1.1);
+for(let x=24;x<=104;x+=6)if(!nearBuilding(x,-108.5,2.5))trees.push({x,z:-108.5,s:rr(1,1.2),c:0xd6ae38});
+for(let x=-60;x<=110;x+=8)if(x<-8||x>27)trees.push({x,z:152.5,s:rr(.9,1.1)});
+[[0.5,-8,0x8a3b3b],[4.5,-42,0x93403a],[-1,-46,0x7a3a34],[-44,47,0xc9622e],[-30,72,0xb8432e],[-12,47,0xd2742a],[-50,68,0xc95a2a]].forEach(([x,z,c])=>trees.push({x,z,s:.9,c}));
+trees.push({x:CC[0],z:CC[1],s:1.9,c:0x3f6a2c});
+const redwoods=[];for(let z=86;z<=112;z+=4.3)redwoods.push({x:27.6,z,s:rr(.95,1.1)});
+const trunkI=new THREE.InstancedMesh(new THREE.CylinderGeometry(.22,.32,1,6),new THREE.MeshStandardMaterial({color:0x5b4636,roughness:1}),trees.length);
+const blobs=[];trees.forEach(t=>{const n=3+((rnd()*3)|0);for(let j=0;j<n;j++){const a=rnd()*6.28,r=rr(.6,1.6)*t.s;blobs.push({x:t.x+Math.cos(a)*r,z:t.z+Math.sin(a)*r,y:GH(t.x,t.z)+(3.4+rr(0,1.8))*t.s,s:rr(1.6,2.4)*t.s,c:t.c})}});
+const crownGeo=new THREE.IcosahedronGeometry(1,2);
+{const p=crownGeo.attributes.position;for(let i=0;i<p.count;i++){const v=new THREE.Vector3().fromBufferAttribute(p,i);v.multiplyScalar(1+(Math.sin(v.x*7)+Math.cos(v.y*9)+Math.sin(v.z*8))*.05);p.setXYZ(i,v.x,v.y,v.z)}crownGeo.computeVertexNormals()}
+const crownI=new THREE.InstancedMesh(crownGeo,new THREE.MeshStandardMaterial({roughness:.95,envMapIntensity:.4}),blobs.length);
+const greens=[0x4f7d2f,0x5d8c36,0x3f6d2a,0x6b9a3f,0x557f31,0x8a8a36];
+trees.forEach((t,i)=>{const gy=GH(t.x,t.z);dummy.position.set(t.x,gy+1.7*t.s,t.z);dummy.rotation.set(0,0,0);dummy.scale.set(t.s,3.4*t.s,t.s);dummy.updateMatrix();trunkI.setMatrixAt(i,dummy.matrix)});
+blobs.forEach((b,i)=>{dummy.position.set(b.x,b.y,b.z);dummy.rotation.set(rnd(),rnd(),rnd());dummy.scale.set(b.s,b.s*.9,b.s);dummy.updateMatrix();crownI.setMatrixAt(i,dummy.matrix);crownI.setColorAt(i,col.set(b.c||greens[(rnd()*greens.length)|0]).multiplyScalar(rr(.85,1.1)))});
+[trunkI,crownI].forEach(m=>{m.castShadow=true;m.receiveShadow=true;instAll.push(m);S.add(m)});
+// cloud-pruned pines: both sides of the main road, along 덕린관's south wall, in front of 만대관 and 청운관, round the courtyard
+const pines=[];seed=61;
+for(let z=-84;z<=58;z+=6.5){pines.push({x:11.6,z,s:rr(.85,1.05)});if(!CANOPY_AT(z))pines.push({x:21.3,z,s:rr(.85,1.05)})}
+for(let x=-92;x<=2;x+=4.6)pines.push({x,z:31.9,s:rr(.7,.9)});
+for(let i=0;i<16;i++)pines.push({x:rr(-4,2),z:i%2?rr(-50,-33):rr(-9,1),s:rr(.75,1.15)});
+[[-7,-70],[-3,-66],[-7,-60.5],[-3,-74]].forEach(([x,z])=>pines.push({x,z,s:.95}));
+[[-66,-30],[-52,-30],[-66,-16],[-52,-16]].forEach(([x,z])=>pines.push({x,z,s:.95}));
+for(let z=-45;z<=-1;z+=5.5)pines.push({x:-37.6,z,s:rr(.75,.95)});
+for(let x=-76;x<=-42;x+=6)pines.push({x,z:1.2,s:rr(.7,.9)});
+for(let x=-52.5;x<=-22;x+=3.4)pines.push({x,z:76.1,s:rr(.7,.85)});
+const pads=[];pines.forEach(p=>{const n=4+((rnd()*3)|0);p.n=n;for(let j=0;j<n;j++){const a=j*2.3+rnd(),r=(j===n-1?0:.75*(1-j/n))*p.s;pads.push({x:p.x+Math.cos(a)*r,z:p.z+Math.sin(a)*r,y:GH(p.x,p.z)+(1.1+j*.8)*p.s,s:(1.05-j*.13)*p.s})}});
+inst(new THREE.CylinderGeometry(.09,.15,1,6),new THREE.MeshStandardMaterial({color:0x5b4636,roughness:1}),pines,(p,d)=>{const h=(1.1+(p.n-1)*.8)*p.s;d.position.set(p.x,GH(p.x,p.z)+h/2,p.z);d.rotation.set(0,0,0);d.scale.set(p.s,h,p.s)});
+{const pm3=inst(new THREE.SphereGeometry(1,14,8),new THREE.MeshStandardMaterial({roughness:.9}),pads,(p,d)=>{d.position.set(p.x,p.y,p.z);d.rotation.set(0,rnd()*3,0);d.scale.set(p.s*1.15,p.s*.48,p.s*1.15)});pads.forEach((p,i)=>pm3.setColorAt(i,col.set(0x3f5c27).multiplyScalar(rr(.8,1.2))))}
+// clipped round shrubs (boxwood) lining the courtyard paths, the 만대관 garden and the garden paths
+const shrubs=[];seed=83;
+const alongLine=(a,b,step,off)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.floor(L/step);for(let i=1;i<n;i++){const t=i/n,x=a[0]+(b[0]-a[0])*t,z=a[1]+(b[1]-a[1])*t,nx=-(b[1]-a[1])/L,nz=(b[0]-a[0])/L;[-1,1].forEach(s=>shrubs.push({x:x+nx*off*s,z:z+nz*off*s,s:rr(.55,.85)}))}};
+[[[-79,-48],[-39,2]],[[-39,-48],[-79,2]],[[-79,CC[1]],[-39,CC[1]]]].forEach(([a,b])=>alongLine(a,b,3.4,2.1));
+for(let k=0;k<shrubs.length;k++){const s=shrubs[k];if(Math.hypot(s.x-CC[0],s.z-CC[1])<9.5||s.x<-78.4||s.x>-39.6||s.z<-47.4||s.z>1.4){shrubs.splice(k,1);k--}}
+for(let i=0;i<40;i++)shrubs.push({x:rr(-4.6,2.6),z:i%2?rr(-51,-32):rr(-10,2),s:rr(.6,1.2)});
+for(let i=0;i<30;i++){const x=rr(-56,2),z=rr(40,46);if(!nearBuilding(x,z,1))shrubs.push({x,z,s:rr(.5,.9)})}
+inst(new THREE.SphereGeometry(1,12,8),new THREE.MeshStandardMaterial({color:0x466f32,roughness:.95}),shrubs,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+p.s*.55,p.z);d.rotation.set(0,0,0);d.scale.set(p.s,p.s*.85,p.s)});
+// rocks along the stream
+const rocks=[];seed=71;for(let i=0;i<STREAM.length-1;i++){const[a,c]=[STREAM[i],STREAM[i+1]];for(let t=0;t<1;t+=.2){const x=a[0]+(c[0]-a[0])*t,z=a[1]+(c[1]-a[1])*t;[-1,1].forEach(s=>rocks.push({x:x+rr(-.3,.3),z:z+s*rr(1.2,1.7),s:rr(.4,.85)}))}}
+inst(new THREE.DodecahedronGeometry(1,0),new THREE.MeshStandardMaterial({color:0xa9a59c,roughness:.95,flatShading:true}),rocks,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+p.s*.3,p.z);d.rotation.set(rnd(),rnd()*3,rnd());d.scale.set(p.s*1.2,p.s*.7,p.s)});
+// text planes
+function textTex(lines,W,H,bg,fg,size,weight){const [c,x]=canvas(W,H);if(bg){x.fillStyle=bg;x.fillRect(0,0,W,H)}x.fillStyle=fg;x.textAlign='center';x.textBaseline='middle';
+  lines.forEach(l=>{x.font=(l.w||weight||800)+' '+(l.s||size)+'px "Gothic A1",sans-serif';x.fillStyle=l.c||fg;x.fillText(l.t,W/2,l.y*H)});return tex(c)}
+function plane(t,w,h,x,y,z,ry,glow){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.7,emissiveMap:glow?t:null,emissive:glow?0xffffff:0x000000,emissiveIntensity:0}));
+  m.position.set(x,y,z);m.rotation.y=ry;S.add(m);if(glow)nightMats.push(m.material);return m}
+const white=plainMat(0xf4f4ef,{roughness:.5}),steel=plainMat(0xd9dcdf,{metalness:.7,roughness:.3}),cladWood=plainMat(0xb06a3c,{roughness:.6}),brownRoof=new THREE.MeshStandardMaterial({color:0x5a3f33,roughness:.55,metalness:.25,side:THREE.DoubleSide});
+// motto stone island in the garden
+{const stone=plainMat(0xbdb6a8,{roughness:.9}),lawn=plainMat(0x5f9a45,{roughness:.95}),I=[-4,71];
+ const pl=new THREE.Mesh(new THREE.CylinderGeometry(3.4,3.5,.5,40),[stone,lawn,stone]);pl.position.set(I[0],.25,I[1]);pl.receiveShadow=true;pl.castShadow=true;S.add(pl);
+ const fl=[];for(let i=0;i<48;i++){const a=i/48*Math.PI*2;fl.push({x:I[0]+Math.cos(a)*3,z:I[1]+Math.sin(a)*3,c:i%8<4?0xd8423a:0xf3f0ea})}
+ const fm=inst(new THREE.SphereGeometry(.3,8,6),plainMat(0xffffff,{roughness:.8}),fl,(p,d)=>{d.position.set(p.x,.62,p.z);d.rotation.set(0,0,0);d.scale.set(1,.8,1)});fl.forEach((p,i)=>fm.setColorAt(i,col.set(p.c)));
+ const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(1,1),new THREE.MeshStandardMaterial({color:0xb7b3aa,roughness:.85,flatShading:true}));rock.scale.set(.55,1.1,1.6);rock.position.set(I[0]+.9,1.5,I[1]);rock.castShadow=true;S.add(rock);
+ plane(textTex([{t:'더불어 사는 사람',y:.5}],512,96,null,'#3b3a36',64),2.6,.5,I[0]+1.52,1.75,I[1],Math.PI/2);
+ const base2=new THREE.Mesh(new THREE.BoxGeometry(.9,.5,2.2),plainMat(0x6f6b63,{roughness:.6}));base2.position.set(I[0]+1.2,.75,I[1]);S.add(base2)}
+// 구령대 (podium) beside the track: green-tiled deck, steel rails, wood-clad posts and a curved roof; flagpoles behind it
+{const P=new THREE.Group(),tile=plainMat(0x3f7f73,{roughness:.6});
+ const base=new THREE.Mesh(new THREE.BoxGeometry(6,.8,10),plainMat(0x55585a,{roughness:.8}));base.position.y=.4;P.add(base);const deck=new THREE.Mesh(new THREE.BoxGeometry(5.9,.12,9.9),tile);deck.position.y=.86;P.add(deck);
+ [[-3,0,.05,10],[3,0,.05,10],[0,-5,6,.05],[0,5,6,.05]].forEach(([x,z,sx,sz])=>{const r=new THREE.Mesh(new THREE.BoxGeometry(sx,.05,sz),steel);r.position.set(x,1.9,z);P.add(r);const n=Math.round(Math.max(sx,sz)/.5);for(let i=0;i<=n;i++){const q=new THREE.Mesh(new THREE.BoxGeometry(.03,1,.03),steel);q.position.set(sx>1?x-sx/2+i*sx/n:x,1.4,sz>1?z-sz/2+i*sz/n:z);P.add(q)}});
+ [[-2.6,-4.6],[2.6,-4.6],[-2.6,4.6],[2.6,4.6]].forEach(([a,b])=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,3.8,10),cladWood);p.position.set(a,.9+1.9,b);P.add(p)});
+ const rg=new THREE.CylinderGeometry(9,9,11,32,1,true,-.36,.72);const roof=new THREE.Mesh(rg,brownRoof);roof.rotation.x=Math.PI/2;roof.position.set(0,-3.9,0);P.add(roof);
+ const fas=new THREE.Mesh(new THREE.BoxGeometry(.12,.35,11),plainMat(0xd8423a));fas.position.set(3.2,4.62,0);P.add(fas);
+ P.position.set(24.6,0,-21);P.traverse(o=>{o.castShadow=true;o.receiveShadow=true});S.add(P);
+ // granite stands: the terrace edge drops 1.5 m to the field in three seat-steps along the west straight
+ const gran=plainMat(0xb8b4aa,{roughness:.8}),joint=plainMat(0x6d6a63,{roughness:.9}),SZ0=-60.5,SZ1=22,SL=SZ1-SZ0;
+ [0,1,2,3].forEach(k=>{const x0=28.4+k*.8,top=-.05-k*.4,m=new THREE.Mesh(new THREE.BoxGeometry(.8,top+2.2,SL),gran);m.position.set(x0+.4,(top-2.2)/2,(SZ0+SZ1)/2);m.castShadow=m.receiveShadow=true;S.add(m);
+   const j=new THREE.Mesh(new THREE.BoxGeometry(.03,.36,SL),joint);j.position.set(x0+.8+.016,top-.2,(SZ0+SZ1)/2);S.add(j);for(let z=SZ0+3;z<SZ1;z+=3){const c=new THREE.Mesh(new THREE.BoxGeometry(.8,.4,.03),joint);c.position.set(x0+.4,top-.18,z);S.add(c)}});
+ [SZ0,SZ1].forEach(z=>{const e=new THREE.Mesh(new THREE.BoxGeometry(3.4,1.6,.4),gran);e.position.set(30,-.75,z);e.castShadow=true;S.add(e)});
+ const [fc,fx]=canvas(192,128);fx.fillStyle='#fff';fx.fillRect(0,0,192,128);fx.save();fx.translate(96,64);fx.rotate(-.59);fx.fillStyle='#cd2e3a';fx.beginPath();fx.arc(0,0,32,Math.PI,0);fx.fill();fx.fillStyle='#0047a0';fx.beginPath();fx.arc(0,0,32,0,Math.PI);fx.fill();
+ fx.fillStyle='#cd2e3a';fx.beginPath();fx.arc(-16,0,16,0,Math.PI*2);fx.fill();fx.fillStyle='#0047a0';fx.beginPath();fx.arc(16,0,16,0,Math.PI*2);fx.fill();fx.restore();
+ fx.fillStyle='#111';[[34,24,-.98],[158,24,.98],[34,104,.98],[158,104,-.98]].forEach(([x,y,r])=>{fx.save();fx.translate(x,y);fx.rotate(r);for(let k=-1;k<=1;k++)fx.fillRect(-14,k*7-2,28,4.5);fx.restore()});
+ const flagT=tex(fc),[sc,sx]=canvas(64,48);sx.fillStyle='#f6f6f2';sx.fillRect(0,0,64,48);sx.fillStyle='#2f7d4f';sx.beginPath();sx.arc(32,24,12,0,7);sx.fill();const schT=tex(sc);
+ [[21.2,-29.5,flagT],[21.2,-31.5,schT],[21.2,-33.5,schT]].forEach(([x,z,t],i)=>{const h=i?9:10.5;const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,h,8),steel);pole.position.set(x,h/2,z);pole.castShadow=true;S.add(pole);
+   const f=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1.2),new THREE.MeshStandardMaterial({map:t,side:THREE.DoubleSide,roughness:.8}));f.position.set(x,h-.7,z-.95);f.rotation.y=Math.PI/2;f.castShadow=true;S.add(f)})}
+// wave-roofed shelters with benches and flower planters between the road and the track
+{const wg=new THREE.PlaneGeometry(5.2,12,1,36);wg.rotateX(-Math.PI/2);const p=wg.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,.55*Math.cos(z/12*Math.PI*2*1.5)+x*.12)}wg.computeVertexNormals();
+ const [sc2,sx2]=canvas(64,256);sx2.fillStyle='#5a3f33';sx2.fillRect(0,0,64,256);for(let j=0;j<256;j+=10){sx2.fillStyle='#4a3229';sx2.fillRect(0,j,64,3)}const wm=new THREE.MeshStandardMaterial({map:tex(sc2),roughness:.5,metalness:.3,side:THREE.DoubleSide});
+ const planter=plainMat(0x6b4a32,{roughness:.8}),bench=plainMat(0x7a5a3a,{roughness:.8});const bloom=[];
+ CANOPIES.forEach(cz=>{const G=new THREE.Group();const r=new THREE.Mesh(wg,wm);r.position.y=3.3;G.add(r);
+   [-5,-1,3,5.6].forEach(z=>[-1.9,1.9].forEach(x=>{const c=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,3.3,8),cladWood);c.position.set(x,1.65,z*.95);G.add(c)}));
+   [-3,3].forEach(z=>{const bn=new THREE.Mesh(new THREE.BoxGeometry(1.4,.45,3.4),bench);bn.position.set(.6,.25,z);G.add(bn)});
+   const pb=new THREE.Mesh(new THREE.BoxGeometry(1,.7,6),planter);pb.position.set(-3.2,.35,0);G.add(pb);for(let k=0;k<14;k++)bloom.push({x:22.4+rr(-.4,.4),z:cz+rr(-2.8,2.8),c:[0xf2f0ea,0xe25b7a,0xf2c230][k%3]});
+   G.position.set(25.6,0,cz);G.traverse(o=>{o.castShadow=true;o.receiveShadow=true});S.add(G)});
+ const bm=inst(new THREE.SphereGeometry(.32,8,6),plainMat(0xffffff,{roughness:.8}),bloom,(q,d)=>{d.position.set(q.x,.85,q.z);d.rotation.set(0,0,0);d.scale.set(1,.8,1)});bloom.forEach((q,i)=>bm.setColorAt(i,col.set(q.c)))}
+// field goals and basketball hoops on the north sand pad
+{const[a0,c0,a1,c1]=FIELD.turf,cx=(a0+a1)/2;[[c0+1.6,-1],[c1-1.6,1]].forEach(([gz,s])=>{const gp=new THREE.Group();
+  [-3.66,3.66].forEach(x=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,2.44,8),white);p.position.set(x,1.22,0);gp.add(p)});
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,7.32,8),white);bar.rotation.z=Math.PI/2;bar.position.y=2.44;gp.add(bar);
+  const net=new THREE.Mesh(new THREE.PlaneGeometry(7.32,2.44),new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.25,side:THREE.DoubleSide}));net.position.set(0,1.22,s*1.2);net.rotation.x=s*.4;gp.add(net);
+  gp.position.set(cx,FIELD_Y,gz);gp.traverse(o=>o.castShadow=true);S.add(gp)});
+ [[52,-92],[80,-92]].forEach(([x,z])=>{const h=new THREE.Group();const p=new THREE.Mesh(new THREE.CylinderGeometry(.1,.12,3.4,8),plainMat(0x3d6f9e));p.position.y=1.7;h.add(p);
+  const bd=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.05,.06),white);bd.position.set(0,3.4,.5);h.add(bd);const ring=new THREE.Mesh(new THREE.TorusGeometry(.23,.02,6,16),plainMat(0xe0632a));ring.rotation.x=Math.PI/2;ring.position.set(0,3.05,.8);h.add(ring);
+  h.position.set(x,FIELD_Y,z);h.traverse(o=>o.castShadow=true);S.add(h)});
+ // tall green ball-stop fences behind both goals (photos 0755/0763)
+ {const fm=new THREE.MeshStandardMaterial({color:0x3fa65a,roughness:.7,transparent:true,opacity:.55,side:THREE.DoubleSide}),pm=plainMat(0x2f7d47,{metalness:.4,roughness:.5});
+  [FIELD.turf[1]-2.5,FIELD.turf[3]+2.5].forEach(z=>{const f=new THREE.Mesh(new THREE.PlaneGeometry(52,5),fm);f.position.set(cx,FIELD_Y+2.5,z);S.add(f);for(let x=cx-26;x<=cx+26;x+=4){const q=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,5,6),pm);q.position.set(x,FIELD_Y+2.5,z);q.castShadow=true;S.add(q)}})}}
+// north gate over the main road, with the guard house beside it
+{const gb=plainMat(0x6e4a36,{roughness:.8}),G=new THREE.Group();const gy0=GH(16.5,-97.6);[[11.4,-97.6],[21.6,-97.6]].forEach(([x,z])=>{const p=new THREE.Mesh(new THREE.BoxGeometry(1.2,7,1.2),gb);p.position.set(x,gy0+2.5,z);G.add(p)});
+ const beam=new THREE.Mesh(new THREE.BoxGeometry(11.4,.9,.7),gb);beam.position.set(16.5,gy0+5.6,-97.6);G.add(beam);G.traverse(o=>o.castShadow=true);S.add(G);
+ plane(textTex([{t:'광덕중·고등학교',y:.5}],1024,96,'#f2efe6','#2b3a33',60),9.4,.7,16.5,gy0+5.6,-97.2,0);
+ const kiosk=new THREE.Mesh(new THREE.BoxGeometry(.5,2.2,1.4),white);kiosk.position.set(16.5,GH(16.5,-93)+1.1,-93);kiosk.castShadow=true;S.add(kiosk)}
+// stone retaining walls: along the north car park and beside the lane west of 단재관
+{const [c,x]=canvas(256,64);x.fillStyle='#6f6c60';x.fillRect(0,0,256,64);seed=303;for(let i=0;i<70;i++){x.fillStyle=shade('#8a8676',rr(.85,1.12));const w=rr(14,30),h=rr(9,16);x.beginPath();x.ellipse(rr(0,256),rr(0,64),w/2,h/2,rr(-.3,.3),0,7);x.fill()}
+ const wt=tex(c);[[-56,-93.3,88,.6,2.6],[-104.8,-32.6,.6,121.4,2.6],[-87.1,66.8,.6,74.6,2.8]].forEach(([wx,wz,sx,sz,h])=>{const t=wt.clone();t.needsUpdate=true;t.repeat.set(Math.max(sx,sz)/8,1);const m=new THREE.Mesh(new THREE.BoxGeometry(sx,h,sz),new THREE.MeshStandardMaterial({map:t,roughness:.95}));m.position.set(wx,h/2,wz);m.castShadow=m.receiveShadow=true;S.add(m)})}
+// bike shed on the north side of 청운관 and a shaded picnic shelter in the garden
+{const st=plainMat(0x5c6266,{metalness:.5,roughness:.5}),sh=new THREE.Group();const r=new THREE.Mesh(new THREE.BoxGeometry(10,.12,2.6),plainMat(0x9fb3b6,{roughness:.3,metalness:.2}));r.position.y=2.4;sh.add(r);
+ [-4.8,0,4.8].forEach(x=>{const p=new THREE.Mesh(new THREE.BoxGeometry(.12,2.4,.12),st);p.position.set(x,1.2,-1.2);sh.add(p)});sh.position.set(-62.5,0,-69.6);sh.traverse(o=>o.castShadow=true);S.add(sh);
+ const pg=new THREE.Group(),net=new THREE.Mesh(new THREE.BoxGeometry(8,.06,4.4),new THREE.MeshStandardMaterial({color:0x2f5a46,roughness:.9,transparent:true,opacity:.85}));net.position.y=2.6;pg.add(net);
+ [[-3.8,-2.1],[3.8,-2.1],[-3.8,2.1],[3.8,2.1],[0,-2.1],[0,2.1]].forEach(([x,z])=>{const p=new THREE.Mesh(new THREE.BoxGeometry(.15,2.6,.15),plainMat(0x5b4636));p.position.set(x,1.3,z);pg.add(p)});
+ [-2.4,0,2.4].forEach(x=>{const t=new THREE.Mesh(new THREE.BoxGeometry(1.6,.75,1.8),plainMat(0x7a5236,{roughness:.8}));t.position.set(x,.38,0);pg.add(t)});pg.position.set(-46,0,44.5);pg.traverse(o=>o.castShadow=true);S.add(pg)}
+// neighbourhood houses
+const houses=[];seed=21;
+const roadX=z=>{for(let i=0;i<westRoad.length-1;i++){const[a,b]=[westRoad[i],westRoad[i+1]];if(z>=a[1]&&z<=b[1])return a[0]+(b[0]-a[0])*(z-a[1])/(b[1]-a[1])}return -128};
+function addHouses(x0,x1,z0,z1,n,avoid){for(let i=0;i<n;i++){const x=rr(x0,x1),z=rr(z0,z1);if(avoid&&avoid(x,z))continue;
+  const w=rr(7,13),d=rr(7,12);if(houses.some(h=>Math.abs(h.x-x)<(h.w+w)/2+1.5&&Math.abs(h.z-z)<(h.d+d)/2+1.5))continue;if(inPoly(x,z,CAMPUS)||nearBuilding(x,z,8))continue;
+  houses.push({x,z,w,d,h:rr(5,11),ry:rr(-.08,.08),pitch:rnd()<.45,wall:['#e9e4d8','#d8cfc0','#c7b49d','#a8735c','#e3dfd6'][(rnd()*5)|0],roof:['#2f9c84','#3aa58a','#4bb39a','#7d8a92','#a04f3b','#3f8f78','#6c6f73','#3d6fb5'][(rnd()*8)|0]})}}
+const nearStreet=(x,z)=>Math.abs(z+120.5)<9||Math.abs(x-119)<9||Math.abs(z-159)<9;
+addHouses(-200,-118,-200,200,330,(x,z)=>x>roadX(z)-9||nearStreet(x,z));
+addHouses(-200,-55,-200,-126,70,nearStreet);
+addHouses(125,200,-200,200,160,nearStreet);
+addHouses(-90,200,166,200,70,nearStreet);
+{const [c,x]=canvas(64,64);x.fillStyle='#fff';x.fillRect(0,0,64,64);x.fillStyle='#55697c';[[8,10],[36,10],[8,38],[36,38]].forEach(([a,b])=>x.fillRect(a,b,18,14));x.fillStyle='#c9c4ba';x.fillRect(0,30,64,3);
+  const wt=tex(c);const wallI=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:wt,roughness:.9}),houses.length);
+  const roofs=houses.filter(h=>h.pitch),flats=houses.filter(h=>!h.pitch);
+  const prism=new THREE.CylinderGeometry(1,1,1,3,1);prism.rotateZ(Math.PI/2);prism.rotateX(Math.PI/6);prism.scale(1,.5,1);
+  const roofI=new THREE.InstancedMesh(prism,plainMat(0xffffff,{roughness:.7}),roofs.length),capI=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),plainMat(0xffffff,{roughness:.85}),flats.length);
+  houses.forEach(h=>h.g=GH(h.x,h.z)-.5);houses.forEach((h,i)=>{dummy.position.set(h.x,h.g+h.h/2,h.z);dummy.rotation.set(0,h.ry,0);dummy.scale.set(h.w,h.h,h.d);dummy.updateMatrix();wallI.setMatrixAt(i,dummy.matrix);wallI.setColorAt(i,col.set(h.wall))});
+  roofs.forEach((h,i)=>{dummy.position.set(h.x,h.g+h.h+1.4,h.z);dummy.rotation.set(0,h.ry,0);dummy.scale.set(h.w+.6,2.8,(h.d+.6)/1.73);dummy.updateMatrix();roofI.setMatrixAt(i,dummy.matrix);roofI.setColorAt(i,col.set(h.roof))});
+  flats.forEach((h,i)=>{dummy.position.set(h.x,h.g+h.h+.2,h.z);dummy.rotation.set(0,h.ry,0);dummy.scale.set(h.w+.3,.4,h.d+.3);dummy.updateMatrix();capI.setMatrixAt(i,dummy.matrix);capI.setColorAt(i,col.set(h.roof))});
+  wallI.userData.squash=1;[wallI,roofI,capI].forEach(m=>{m.castShadow=m.receiveShadow=true;instAll.push(m);S.add(m)})}
+// the high-rise apartment blocks north and north-east of the school (positions from the satellite photo)
+{const [c,x]=canvas(128,512);x.fillStyle='#f0ece2';x.fillRect(0,0,128,512);seed=91;
+ for(let f=0;f<32;f++){const y=f*16;x.fillStyle='#d9d5cb';x.fillRect(0,y+12,128,4);for(let k=0;k<4;k++){x.fillStyle=rnd()<.15?'#c9d3dc':'#7f93a6';x.fillRect(6+k*31,y+3,22,8)}}
+ x.fillStyle='#9c6b4e';x.fillRect(0,0,128,10);x.fillStyle='#e4d6c2';x.fillRect(0,0,6,512);x.fillRect(122,0,6,512);const at=tex(c);
+ const apts=[[-68,-157],[18,-154],[86,-157],[164,-164],[-18,-214],[64,-218],[136,-218],[189,-382],[214,-339],[229,-296],[246,-257],[268,-196],[314,-207],[357,-257],[371,-221],[314,-93],[336,-54],[357,-14]]
+   .map(([ax,az])=>({x:ax,z:az,h:rr(70,84),w:rr(30,36),d:rr(15,18),ry:-.55+rr(-.08,.08)}));
+ const am=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:at,roughness:.8}),apts.length);
+ apts.forEach((a,i)=>{dummy.position.set(a.x,GH(a.x,a.z)+a.h/2-.5,a.z);dummy.rotation.set(0,a.ry,0);dummy.scale.set(a.w,a.h,a.d);dummy.updateMatrix();am.setMatrixAt(i,dummy.matrix)});am.userData.squash=1;instAll.push(am);S.add(am)}
+// cars: the car parks are full on a school day
+const cars=[];seed=31;
+for(let z=-58.8;z<25;z+=2.5)if(rnd()<.75)cars.push({x:5.8,z,ry:Math.PI/2});
+for(let x=-8.8;x<10;x+=2.5){if(rnd()<.7)cars.push({x,z:-67.2,ry:0});if(rnd()<.6)cars.push({x,z:-59.2,ry:0})}
+for(let x=-98.8;x<-14;x+=2.5){if(rnd()<.7)cars.push({x,z:-90.4,ry:0});if(rnd()<.55)cars.push({x,z:-78.6,ry:0})}
+for(let x=-77.8;x<-41;x+=2.5)if(rnd()<.75)cars.push({x,z:-52,ry:0});
+for(let z=-44.8;z<0;z+=2.5)if(rnd()<.7)cars.push({x:-30.2,z,ry:Math.PI/2});
+[-27.5,-24.8,-17.2,-14.5].forEach(z=>{if(rnd()<.8)cars.push({x:-.5,z,ry:Math.PI/2})});
+for(let x=3.2;x<23;x+=2.5)if(rnd()<.85)cars.push({x,z:148.8,ry:0});for(let x=7.2;x<20;x+=2.5)if(rnd()<.6)cars.push({x,z:126.8,ry:0});
+for(let i=0;i<14;i++){const z=rr(-180,190),x=roadX(z)+(rnd()<.5?-2:2);cars.push({x,z,ry:0})}
+for(let i=0;i<10;i++)cars.push({x:119+(rnd()<.5?-2:2),z:rr(-180,180),ry:0});
+for(let i=0;i<10;i++)cars.push({x:rr(-180,180),z:-120.5+(rnd()<.5?-2:2),ry:Math.PI/2});
+{const bodyI=new THREE.InstancedMesh(new THREE.BoxGeometry(1.8,.8,4.3),new THREE.MeshStandardMaterial({roughness:.35,metalness:.5,envMapIntensity:1}),cars.length);
+  const cabI=new THREE.InstancedMesh(new THREE.BoxGeometry(1.6,.6,2.3),new THREE.MeshStandardMaterial({color:0x26303a,roughness:.2,metalness:.6}),cars.length);
+  const cc=[0xf1f1f1,0x1f2226,0x8e959c,0xc8ccd0,0x2c4a7a,0x8a2a24,0xf1f1f1,0xf1f1f1,0x1f2226];
+  cars.forEach((c,i)=>{const y=GH(c.x,c.z);dummy.position.set(c.x,y+.75,c.z);dummy.rotation.set(0,c.ry,0);dummy.scale.set(1,1,1);dummy.updateMatrix();bodyI.setMatrixAt(i,dummy.matrix);bodyI.setColorAt(i,col.set(cc[(rnd()*cc.length)|0]));
+    dummy.position.y=y+1.45;dummy.translateZ(-.2);dummy.updateMatrix();cabI.setMatrixAt(i,dummy.matrix)});
+  [bodyI,cabI].forEach(m=>{m.castShadow=true;instAll.push(m);S.add(m)})}
+// street lamps
+const lamps=[];for(let z=-80;z<=60;z+=20)lamps.push({x:12.6,z:z+3});
+for(let x=-88;x<=8;x+=16)lamps.push({x,z:38.9});
+[[-80,-49],[-38,-49],[-80,1.5],[-38,1.5],[-56,-79],[-30,-79],[-90,-79],[0,108],[20,108],[0,148],[20,148],[-50,60],[-20,70],[-82,40],[-82,70],[30,-100],[60,-100]].forEach(([x,z])=>lamps.push({x,z}));
+inst(new THREE.CylinderGeometry(.08,.1,6,6),plainMat(0x50555a,{metalness:.6,roughness:.4}),lamps,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+3,p.z);d.rotation.set(0,0,0);d.scale.set(1,1,1)});
+const bulbMat=new THREE.MeshStandardMaterial({color:0xeeeeee,emissive:0xffd59a,emissiveIntensity:0});nightMats.push(bulbMat);
+inst(new THREE.SphereGeometry(.32,10,8),bulbMat,lamps,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+6.1,p.z);d.rotation.set(0,0,0);d.scale.set(1,1,1)});
+// dawn redwoods on a lawn bank beside the ramp road, edged with rocks and a clipped hedge (photo 0742)
+{const tr=inst(new THREE.CylinderGeometry(.25,.4,1,8),plainMat(0x6b4a36,{roughness:1}),redwoods,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+2.5*p.s,p.z);d.rotation.set(0,0,0);d.scale.set(p.s,5*p.s,p.s)});
+ const cn=inst(new THREE.ConeGeometry(1,1,10),new THREE.MeshStandardMaterial({roughness:.95}),redwoods,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+(3.2+6)*p.s,p.z);d.rotation.set(0,rnd()*3,0);d.scale.set(1.9*p.s,12*p.s,1.9*p.s)});redwoods.forEach((p,i)=>cn.setColorAt(i,col.set(0x5f6534).multiplyScalar(rr(.85,1.1))))}
+// planting beds (화단): clipped hedges in granite kerbs along the roads, walls and lawns seen in the photos
+const hedges=[],kerbs=[];
+const hedge=(x0,z0,x1,z1,w,h)=>{const L=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.ceil(L/4));for(let i=0;i<n;i++){const a=i/n,b=(i+1)/n;hedges.push({x:x0+(x1-x0)*(a+b)/2,z:z0+(z1-z0)*(a+b)/2,l:L/n+.05,w,h:h*rr(.92,1.08),ry:-Math.atan2(z1-z0,x1-x0)})}};
+const kerb=(x0,z0,x1,z1)=>[[x0,z0,x1,z0],[x1,z0,x1,z1],[x1,z1,x0,z1],[x0,z1,x0,z0]].forEach(([a,b,c,d])=>kerbs.push({x:(a+c)/2,z:(b+d)/2,l:Math.hypot(c-a,d-b)+.2,ry:-Math.atan2(d-b,c-a)}));
+for(let z=-86;z<26;z+=22)hedge(12.1,z,12.1,Math.min(26,z+20),.9,.75);                       // main road, parking side
+hedge(-93,32.3,4,32.3,.7,.55);                                                                  // under the pines along 덕린관's south wall
+[[-47.3,-76,-42.6],[1.3,-76,-42.6]].forEach(([z,a,b])=>{hedge(a,z,-61.5,z,.8,.7);hedge(-56.5,z,b,z,.8,.7)});   // courtyard lawn edges, gaps at the paths
+[-78.3,-39.7].forEach(x=>{hedge(x,-45.5,x,-26,.8,.7);hedge(x,-20,x,-.5,.8,.7)});
+kerb(-5,-52,3,-31);kerb(-5,-11,3,3);hedge(2.5,-51,2.5,-32,.8,.8);hedge(2.5,-10,2.5,2,.8,.8);    // 만대관 topiary beds
+kerb(-9.6,-76,-3,-64.6);hedge(-3.5,-75.5,-3.5,-65,.8,.8);                                       // 청운관 east-end bed
+kerb(-53.6,75.3,-21.4,76.9);                                                                    // pine bed along the 이산관 dining hall
+hedge(25.3,80,25.3,113,.9,.75);                                                                 // ramp bank
+hedge(-59.6,47,-59.6,78,.8,.7);                                                                 // lawn strip east of 단재관
+hedge(-56,39.7,-12,39.7,.7,.55);hedge(-7,39.7,2,39.7,.7,.55);                                  // garden edge along the road
+{const hm=inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color:0x3f6630,roughness:.95}),hedges,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+p.h/2,p.z);d.rotation.set(0,p.ry,0);d.scale.set(p.l,p.h,p.w)});hedges.forEach((p,i)=>hm.setColorAt(i,col.set(0x3f6630).multiplyScalar(rr(.85,1.15))));
+ inst(new THREE.BoxGeometry(1,1,1),plainMat(0xc7c3ba,{roughness:.8}),kerbs,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+.12,p.z);d.rotation.set(0,p.ry,0);d.scale.set(p.l,.25,.2)});
+ const rk=[];seed=909;for(let z=80;z<113;z+=.9)rk.push({x:24.7+rr(-.15,.15),z,s:rr(.35,.6)});inst(new THREE.DodecahedronGeometry(1,0),new THREE.MeshStandardMaterial({color:0xa9a59c,roughness:.95,flatShading:true}),rk,(p,d)=>{d.position.set(p.x,GH(p.x,p.z)+p.s*.35,p.z);d.rotation.set(rnd(),rnd()*3,rnd());d.scale.set(p.s*1.2,p.s*.8,p.s)})}
+// school boundary (photos 0845/0897/0904/0740): a low stone wall with a black steel bar fence on top, all the way round the campus
+{const [c,x]=canvas(256,128);x.clearRect(0,0,256,128);x.fillStyle='#1b1d1f';for(let i=4;i<256;i+=16)x.fillRect(i,4,4,124);x.fillRect(0,4,256,6);x.fillRect(0,96,256,5);
+ for(let i=4;i<256;i+=16){x.beginPath();x.moveTo(i-2,6);x.lineTo(i+2,0);x.lineTo(i+6,6);x.fill()}
+ const ft=tex(c),fm=new THREE.MeshStandardMaterial({map:ft,alphaTest:.5,side:THREE.DoubleSide,roughness:.5,metalness:.5}),
+   sm2=plainMat(0x8e8a80,{roughness:.9}),cap=plainMat(0xc4c0b6,{roughness:.8}),post=plainMat(0x1b1d1f,{metalness:.5,roughness:.5});
+ const GATES=[[-4,-116,8,-116],[3,155,14,155]],gap=(x,z)=>GATES.some(([a,b,c2,d])=>x>=Math.min(a,c2)-.5&&x<=Math.max(a,c2)+.5&&Math.abs(z-b)<1.5);
+ const segs=[];for(let i=0;i<CAMPUS.length;i++){const[a,b]=CAMPUS[i],[c2,d]=CAMPUS[(i+1)%CAMPUS.length],L=Math.hypot(c2-a,d-b),n=Math.ceil(L/3);
+   for(let k=0;k<n;k++){const t=(k+.5)/n,x=a+(c2-a)*t,z=b+(d-b)*t;if(gap(x,z))continue;segs.push({x,z,l:L/n+.02,ry:-Math.atan2(d-b,c2-a),y:GH(x,z)})}}
+ inst(new THREE.BoxGeometry(1,1,1),sm2,segs,(p,d)=>{d.position.set(p.x,p.y+.25,p.z);d.rotation.set(0,p.ry,0);d.scale.set(p.l,.9,.35)});
+ inst(new THREE.BoxGeometry(1,1,1),cap,segs,(p,d)=>{d.position.set(p.x,p.y+.72,p.z);d.rotation.set(0,p.ry,0);d.scale.set(p.l,.06,.42)});
+ inst(new THREE.PlaneGeometry(1,1),fm,segs,(p,d)=>{d.position.set(p.x,p.y+.75+.8,p.z);d.rotation.set(0,p.ry,0);d.scale.set(p.l,1.6,1)});
+ inst(new THREE.BoxGeometry(.1,1.8,.1),post,segs,(p,d)=>{d.position.set(p.x+Math.cos(p.ry)*p.l/2,p.y+.75+.9,p.z-Math.sin(p.ry)*p.l/2);d.rotation.set(0,p.ry,0);d.scale.set(1,1,1)});
+ // south gate (photo 0740): brick piers, a banner frame over the opening, and steps up from the gym forecourt to the street
+ const br=plainMat(0x7a4433,{roughness:.85}),gy=GH(8.5,155);[3,14].forEach(xx=>{const p=new THREE.Mesh(new THREE.BoxGeometry(.8,2.4,.8),br);p.position.set(xx,gy+1.2,155);p.castShadow=true;S.add(p)});
+ const fr=new THREE.Mesh(new THREE.BoxGeometry(11.2,.12,.12),post);fr.position.set(8.5,gy+3.3,155);S.add(fr);[3,14].forEach(xx=>{const q=new THREE.Mesh(new THREE.BoxGeometry(.1,1,.1),post);q.position.set(xx,gy+2.8,155);S.add(q)});
+ plane(textTex([{t:'광덕중·고등학교에 오신 것을 환영합니다',y:.5,s:40,w:700}],1024,80,'#f4f2ec','#1d4f9c',40),9,.6,8.5,gy+2.95,154.9,Math.PI);
+ for(let k=0;k<4;k++){const st=new THREE.Mesh(new THREE.BoxGeometry(10.4,.18*(k+1),.45),plainMat(0xb3afa6,{roughness:.85}));st.position.set(8.5,gy-.6+.09*(k+1),153.2+k*.45);st.receiveShadow=true;S.add(st)}}
+const decorEnd=S.children.length;
+// ---------- things fixed to buildings (signs, banners, clock, canopies, solar panels, AC units, downpipes) ----------
+const onB=[];const att=(o,b)=>{o.userData.onB=b;onB.push(o);return o};
+{const d=BLD.find(b=>b.id==='deokrin'),m=BLD.find(b=>b.id==='mandae'),j=BLD.find(b=>b.id==='mid');const ex=d.X0+.06;
+ att(plane(textTex([{t:'덕린관',y:.5}],512,160,null,'#f3e4bf',118),4.2,1.3,ex,4*3.6-1.5,29,Math.PI/2,true),d);
+ att(plane(textTex([{t:'고등학교',y:.06,s:44,c:'#26324a'},{t:'수상 · 진학',y:.16,s:40,w:600,c:'#26324a'},{t:'SKY · 의치한',y:.28,s:40,w:600,c:'#26324a'},{t:'중학교',y:.46,s:44,c:'#26324a'},{t:'수상',y:.56,s:40,w:600,c:'#26324a'},{t:'학교법인 만대학원',y:.84,s:30,w:600,c:'#ffffff'},{t:'광덕중·고등학교',y:.92,s:44,c:'#ffffff'}],256,720,'#dfe3f2','#26324a',44),3.4,9.4,ex,7.6,25.8,Math.PI/2),d);
+ const[mx,mz]=toW(m,21,22.5);att(plane(textTex([{t:'만대관',y:.5}],512,160,null,'#f3e4bf',118),3.2,.75,mx+.08,4*3.6-.75,mz,Math.PI/2,true),m);
+ const[cx,cz]=toW(m,38,22.5);const ck=new THREE.Mesh(new THREE.CircleGeometry(.62,32),plainMat(0xf7f5ef,{roughness:.4}));ck.rotation.y=Math.PI/2;ck.position.set(cx+.07,4*3.6-.8,cz);S.add(ck);att(ck,m);
+ const rim=new THREE.Mesh(new THREE.RingGeometry(.58,.66,32),plainMat(0x2f3a40));rim.rotation.y=Math.PI/2;rim.position.set(cx+.08,4*3.6-.8,cz);S.add(rim);att(rim,m);
+ const bnx=m.X0+21+.33;att(plane(textTex([{t:'민족혼이 살아',y:.11,s:76},{t:'숨 쉬는 학교',y:.24,s:76},{t:'이제 세계로! 미래로!',y:.39,s:54,c:'#ffffff'},{t:'◆ 글로벌 인재양성 프로그램 운영',y:.52,s:30,w:600,c:'#ffffff'},{t:'◆ 창업교육거점센터 운영',y:.6,s:30,w:600,c:'#ffffff'},{t:'광덕중·고등학교',y:.93,s:34,c:'#ffffff'}],512,672,'#1f4f9c','#f2c230',76),3.8,5,bnx,10.4,.5,Math.PI/2),m);
+ const jx=j.X0+.06;att(plane(textTex([{t:'꿈이 이루어지는 광덕중학교',y:.25,s:44,w:600,c:'#f3e4bf'},{t:'청운관',y:.68,s:120}],720,220,null,'#f3e4bf',120),3.4,1.05,jx,13.4,-62.4,Math.PI/2,true),j);
+ att(plane(textTex([{t:'조롱보다',y:.14,s:44,w:600,c:'#3a4b2c'},{t:'존중을,',y:.25,s:84,c:'#d23f6f'},{t:'편견보다',y:.4,s:44,w:600,c:'#3a4b2c'},{t:'배려를,',y:.51,s:84,c:'#7a3fa8'},{t:'비방보다',y:.66,s:44,w:600,c:'#3a4b2c'},{t:'이해를',y:.77,s:84,c:'#2f7d4f'}],256,720,'#f4f6e8','#3a4b2c',44),3.2,8.6,jx,8.6,-57.6,Math.PI/2),j);
+ const cm=plainMat(0xe9e6df,{roughness:.6}),add=(geo,mat,x,y,z)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;S.add(o);att(o,d);return o};
+ // 덕린관 entrance (photos 0775/0779): thin canopy with a dark sign band over glass doors, a stone landing with a railed ramp, and the white "K-교육" storefront box
+ const [gc2,gx2]=canvas(256,96);gx2.fillStyle='#22303a';gx2.fillRect(0,0,256,96);gx2.fillStyle='#7d97a6';for(let i=0;i<8;i++)gx2.fillRect(4+i*31.5,6,27,84);gx2.fillStyle='#c9ced2';gx2.fillRect(0,0,256,5);gx2.fillRect(0,40,256,3);const glassT=tex(gc2);
+ const dark=plainMat(0x2b2f33,{roughness:.6}),landM=plainMat(0xb9b5ad,{roughness:.8}),rampM=plainMat(0xa9a59d,{roughness:.85}),LH=.48,fz=18.5;
+ add(new THREE.BoxGeometry(9.4,.18,3.2),cm,-7.6,3.45,fz-1.6);add(new THREE.BoxGeometry(9.4,.7,.25),dark,-7.6,3.2,fz-3.2);
+ att(plane(textTex([{t:'새로운 세계에 눈뜨게 하는 교육 · 광덕고등학교',y:.5,s:40,w:600}],1024,80,null,'#f2efe6',40),9,.55,-7.6,3.2,fz-3.33,Math.PI),d);
+ [-11.9,-3.3].forEach(x=>add(new THREE.BoxGeometry(.25,3.2,.25),dark,x,1.6+LH/2,fz-2.9));
+ {const [c,x]=canvas(512,192);x.fillStyle='#3a4248';x.fillRect(0,0,512,192);x.fillStyle='#8aa3b1';for(let i=0;i<6;i++){x.fillRect(8+i*84,10,72,176)}x.fillStyle='#c9ced2';x.fillRect(0,0,512,8);x.fillRect(0,60,512,4);
+  x.fillStyle='#d7dbdd';[176,260].forEach(xx=>x.fillRect(xx-1,90,3,40));const t=tex(c);att(plane(t,8.2,2.9,-7.6,LH+1.45,fz-.06,Math.PI),d)}
+ add(new THREE.BoxGeometry(9.4,LH,3),landM,-7.6,LH/2,fz-1.5);
+ for(let k=0;k<3;k++)add(new THREE.BoxGeometry(4.4,LH*(k+1)/3-.02,.34),landM,-10,(LH*(k+1)/3)/2,fz-3-(3-k)*.34+.17);
+ {const g=plainMat(0xe0b33a,{roughness:.7});add(new THREE.BoxGeometry(.3,.02,3),g,-7.6,LH+.01,fz-1.5);add(new THREE.BoxGeometry(.3,.02,1.1),g,-10,.01,fz-4.6)}
+ {const L=8,a=Math.atan2(LH,L),x0=-2.9,r=add(new THREE.BoxGeometry(L,.24,1.5),rampM,x0+L/2,LH/2,fz-2.25);r.rotation.z=-a;
+  const wall=add(new THREE.BoxGeometry(L,.25,.18),rampM,x0+L/2,LH/2+.18,fz-3.05);wall.rotation.z=-a;
+  [fz-3.05,fz-1.45].forEach(zr=>{for(let i=0;i<=10;i++){const xx=x0+i*L/10,y=LH*(1-i/10);add(new THREE.BoxGeometry(.04,.9,.04),steel,xx,y+.45,zr)}
+    add(new THREE.BoxGeometry(L+.05,.05,.05),steel,x0+L/2,LH/2+.9,zr).rotation.z=-a;add(new THREE.BoxGeometry(L+.05,.04,.04),steel,x0+L/2,LH/2+.65,zr).rotation.z=-a});
+  for(let i=0;i<=8;i++){const xx=-12.2+i*.98;if(xx>-8.2&&xx<-3)continue;add(new THREE.BoxGeometry(.04,.9,.04),steel,xx,LH+.45,fz-3)}}
+ att(plane(glassT,5,2.6,-.2,1.5,21.13,Math.PI),d);add(new THREE.BoxGeometry(5.3,.75,.55),plainMat(0xf4f2ec,{roughness:.6}),-.2,3.1,20.92);
+ att(plane(textTex([{t:'K-교육특별시의 빛이 되겠습니다',y:.5,s:40,w:800}],768,96,null,'#1d4f9c',40),4.8,.6,-.2,3.1,20.63,Math.PI),d);
+ const jc=new THREE.Mesh(new THREE.BoxGeometry(2.6,.3,5),cm);jc.position.set(-8.7,3.4,-62);jc.castShadow=true;S.add(jc);att(jc,j)}
+// glass curtain walls over 덕린관's two courtyard-side homebase blocks (stone-clad ground floor, glazing above)
+{const d=BLD.find(b=>b.id==='deokrin');const [c,x]=canvas(256,256);x.fillStyle='#8fc1c4';x.fillRect(0,0,256,256);
+ const gr=x.createLinearGradient(0,0,0,256);gr.addColorStop(0,'rgba(255,255,255,.4)');gr.addColorStop(1,'rgba(40,90,95,.18)');x.fillStyle=gr;x.fillRect(0,0,256,256);
+ x.fillStyle='#d9dcdc';for(let i=0;i<=256;i+=32)x.fillRect(i-2,0,4,256);for(let j=0;j<=256;j+=64)x.fillRect(0,j-3,256,6);x.fillStyle='rgba(255,255,255,.5)';for(let j=40;j<256;j+=64)x.fillRect(0,j,256,2);
+ const gt=tex(c),stone=plainMat(0xd8d0c0,{roughness:.8});
+ [[25,44.6],[55.2,75.3]].forEach(([u0,u1])=>{const[x0,z0]=toW(d,u1,18.2),[x1]=toW(d,u0,18.2);const w=x1-x0,zf=z0-.12;
+   const sb=new THREE.Mesh(new THREE.BoxGeometry(w+.2,3.6,.3),stone);sb.position.set((x0+x1)/2,1.8,zf);S.add(sb);att(sb,d);
+   const t=gt.clone();t.needsUpdate=true;t.repeat.set(w/6,1.6);const gp=new THREE.Mesh(new THREE.BoxGeometry(w+.2,3*3.6+.6,.3),new THREE.MeshStandardMaterial({map:t,roughness:.18,metalness:.15,envMapIntensity:1,emissiveMap:t,emissive:0xffffff,emissiveIntensity:0}));
+   nightMats.push(gp.material);gp.position.set((x0+x1)/2,3.6+(3*3.6+.6)/2,zf);S.add(gp);att(gp,d)})}
+// accent cladding from the photos: an ochre panel strip beside 덕린관's north-east corner, copper panels on 만대관's south end
+{const d=BLD.find(b=>b.id==='deokrin'),m=BLD.find(b=>b.id==='mandae'),ochre=plainMat(0xd9a441,{roughness:.5,metalness:.15}),copper=plainMat(0xb4693a,{roughness:.45,metalness:.35});
+ const slab=(mat,x,z,sx,sz,b)=>{const p=new THREE.Mesh(new THREE.BoxGeometry(sx,4*3.6-.4,sz),mat);p.position.set(x,(4*3.6-.4)/2,z);p.castShadow=p.receiveShadow=true;S.add(p);att(p,b)};
+ slab(ochre,3.7,21.05,3,.3,d);[-15.3,-12.5].forEach(x=>slab(copper,x,toW(m,10,0)[1]+.15,1.3,.3,m))}
+// 이산관 dining hall (photos 0948/0952/0955): cream cornice over the two-storey glass, round windows up the east stair tower
+{const b=BLD.find(x=>x.id==='isan'),cream=plainMat(0xe7dcc0,{roughness:.6});const[x0,z0]=toW(b,35.5,20.75),[x1]=toW(b,2.5,20.75);
+ const co=new THREE.Mesh(new THREE.BoxGeometry(x1-x0+1,.5,1),cream);co.position.set((x0+x1)/2,7.45,z0-.3);co.castShadow=true;S.add(co);att(co,b);
+ const[ex,ez]=toW(b,0,10);[5.4,9,12.6,16.2].forEach(y=>{const r=new THREE.Mesh(new THREE.RingGeometry(.42,.6,24),cream),w=new THREE.Mesh(new THREE.CircleGeometry(.42,24),plainMat(0x34434d,{roughness:.2,metalness:.4}));
+  [r,w].forEach(m=>{m.rotation.y=Math.PI/2;m.position.set(ex+.07,y,ez);S.add(m);att(m,b)})})}
+// gym (photo 0741): stone plinth, steps up to three recessed door bays, a terracotta fascia band overhanging the brick walls with the school slogan
+{const b=BLD.find(x=>x.id==='gym'),y0=b.base,yT=y0Of(b,3),fas=plainMat(0xa0503a,{roughness:.55,metalness:.3}),stone=plainMat(0x8f8b84,{roughness:.85});
+ const A=(geo,mat,x,y,z)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;S.add(o);att(o,b);return o};
+ const[px0,pz0,px1,pz1]=wRect(b,0,0,45,35);A(new THREE.BoxGeometry(px1-px0,y0-HILL+.6,pz1-pz0),stone,(px0+px1)/2,(y0+HILL-.6)/2,(pz0+pz1)/2);
+ const[fx0,fz0,fx1,fz1]=wRect(b,-1.8,-1.8,46.8,36.8),fy=yT-1.8;
+ [[fx0,fz0,fx1,fz0+.35],[fx0,fz1-.35,fx1,fz1],[fx0,fz0,fx0+.35,fz1],[fx1-.35,fz0,fx1,fz1]].forEach(([a,c,e,f])=>A(new THREE.BoxGeometry(e-a,2.4,f-c),fas,(a+e)/2,fy+1.2,(c+f)/2));
+ A(new THREE.BoxGeometry(fx1-fx0,.2,fz1-fz0),fas,(fx0+fx1)/2,fy+.1,(fz0+fz1)/2);
+ const ex=toW(b,0,0)[0];
+ {const [c,x]=canvas(2048,136);x.clearRect(0,0,2048,136);x.fillStyle='#ffffff';x.textBaseline='middle';x.textAlign='center';x.font='700 46px "Gothic A1",sans-serif';
+  x.fillText('글로벌 리더를 지향하는',900,42);x.fillText('꿈과 끼가 남다른 광덕인',980,98);x.font='600 26px "Gothic A1",sans-serif';x.fillText('학교법인만대학원',1430,52);x.fillText('광덕중·고등학교',1430,88);
+  x.beginPath();x.arc(1300,70,30,0,7);x.strokeStyle='#ffffff';x.lineWidth=5;x.stroke();x.font='700 40px "Gothic A1",sans-serif';x.fillStyle='#ffffff';x.fillText('창업교육거점센터 ↑',1800,40);
+  const t=tex(c);const m=new THREE.Mesh(new THREE.PlaneGeometry(fz1-fz0,2.2),new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:.6}));m.rotation.y=Math.PI/2;m.position.set(fx1+.02,fy+1.2,(fz0+fz1)/2);S.add(m);att(m,b)}
+ const [dc,dx]=canvas(256,192);dx.fillStyle='#1f2629';dx.fillRect(0,0,256,192);dx.fillStyle='#46525a';for(let i=0;i<4;i++)dx.fillRect(10+i*61,40,52,148);dx.fillStyle='#7a2f2a';dx.fillRect(0,0,256,30);dx.fillStyle='#c9ced2';dx.fillRect(0,30,256,4);const doorT=tex(dc);
+ [121.5,128,134.5].forEach(z=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.9),new THREE.MeshStandardMaterial({map:doorT,roughness:.4,metalness:.3}));m.rotation.y=Math.PI/2;m.position.set(ex+.06,y0+1.95,z);S.add(m);att(m,b)});
+ [[ex+5.55,y0-.3],[ex+6.15,y0-.6]].forEach(([cx,top])=>A(new THREE.BoxGeometry(.6,top-HILL+.3,22.6),stone,cx,(top+HILL-.3)/2,129));
+ [117.6,140.4].forEach(z=>A(new THREE.BoxGeometry(5.2,.05,.05),steel,ex+2.6,y0+1,z));
+ const ban=plane(textTex([{t:'애국가',y:.12,s:52,c:'#c8352f'},{t:'1. 동해물과 백두산이',y:.3,s:24,w:600},{t:'마르고 닳도록',y:.38,s:24,w:600},{t:'하느님이 보우하사',y:.46,s:24,w:600},{t:'우리나라 만세',y:.54,s:24,w:600},{t:'무궁화 삼천리 화려강산',y:.66,s:24,w:600},{t:'대한사람 대한으로',y:.74,s:24,w:600},{t:'길이 보전하세',y:.82,s:24,w:600}],256,560,'#f6f4ee','#2b2f33',24),2.2,4.8,ex+.07,y0+6.2,114.3,Math.PI/2);att(ban,b);
+ const gs2=new THREE.Mesh(new THREE.PlaneGeometry(1,9),plainMat(0x34434d,{roughness:.2,metalness:.45}));gs2.rotation.y=Math.PI/2;gs2.position.set(ex+.06,y0+5,116.7);S.add(gs2);att(gs2,b)}
+const solarList=[],acList=[],pipeList=[];
+GEN.solar.forEach(({b,r,y})=>{const[x0,z0,x1,z1]=wRect(b,r.u0,r.v0,r.u1,r.v1);for(let z=z0+2.2;z<z1-2;z+=2.6)for(let x=x0+2.2;x<x1-1.6;x+=1.15)solarList.push({b,x:x+.5,z:z+.8,y:y+.55})});
+seed=505;BLD.forEach(b=>{if(b.hip)return;const top=floorList(b).filter(f=>b.floors[f].length>2).pop();const rs=b.floors[top];const n=Math.max(2,Math.round(rs.reduce((a,r)=>a+(r.u1-r.u0)*(r.v1-r.v0),0)/260));
+  for(let k=0;k<n;k++){const r=rs[(rnd()*rs.length)|0];const[x0,z0,x1,z1]=wRect(b,r.u0,r.v0,r.u1,r.v1);if(x1-x0<3||z1-z0<3)continue;const x=rr(x0+1.2,x1-1.2),z=rr(z0+1.2,z1-1.2);
+    if(solarList.some(s=>Math.abs(s.x-x)<1.4&&Math.abs(s.z-z)<1.8))continue;acList.push({b,x,z,y:y0Of(b,top)+fhOf(b,top),s:rr(.9,1.5)})}});
+const floorsAt=(b,u,v)=>{let top=0;floorList(b).forEach(f=>{const p=b.plan[f];if(p.rooms.some(r=>u>r.u0&&u<r.u1&&v>r.v0&&v<r.v1&&r.t!=='void'))top=f});return top};
+GEN.parts.forEach((p,i)=>{if(p.k!=='ext'||p.f!==1||p.b.gym||p.len<3||i%3)return;const nf=floorsAt(p.b,p.lu,p.lv);if(nf<2)return;
+  const h=y0Of(p.b,nf)+fhOf(p.b,nf)+.6;const t=p.nx?[0,1]:[1,0];const off=.22;pipeList.push({b:p.b,x:p.x+p.nx*(Math.abs(p.nx)*(p.sx/2)+off)+t[0]*(p.sx/2-.4),z:p.z+p.nz*(Math.abs(p.nz)*(p.sz/2)+off)+t[1]*(p.sz/2-.4),h})});
+{const [c,x]=canvas(64,96);x.fillStyle='#1d2b44';x.fillRect(0,0,64,96);x.strokeStyle='#5a6f8f';x.lineWidth=1.5;for(let i=0;i<=64;i+=16){x.beginPath();x.moveTo(i,0);x.lineTo(i,96);x.stroke()}for(let j=0;j<=96;j+=16){x.beginPath();x.moveTo(0,j);x.lineTo(64,j);x.stroke()}
+  x.strokeStyle='#c9ced6';x.lineWidth=3;x.strokeRect(1,1,62,94);
+  const sm1=inst(new THREE.BoxGeometry(1.05,.06,1.75),new THREE.MeshStandardMaterial({map:tex(c),roughness:.3,metalness:.4,envMapIntensity:1.2}),solarList,(p,d)=>{d.position.set(p.x,p.y,p.z);d.rotation.set(-.26,0,0);d.scale.set(1,1,1)});sm1.userData.list=solarList;
+  const legs=solarList.filter((p,i)=>i%2===0);const sm2=inst(new THREE.BoxGeometry(1.0,.5,.12),plainMat(0x9ea4a8,{metalness:.6,roughness:.5}),legs,(p,d)=>{d.position.set(p.x,p.y-.3,p.z+.75);d.rotation.set(0,0,0);d.scale.set(1,1,1)});sm2.userData.list=legs}
+{const am=inst(new THREE.BoxGeometry(1,1,1),plainMat(0xdcdcd8,{roughness:.6}),acList,(p,d)=>{d.position.set(p.x,p.y+p.s*.4,p.z);d.rotation.set(0,0,0);d.scale.set(p.s*1.6,p.s*.8,p.s*1.1)});am.userData.list=acList}
+{const pm=inst(new THREE.CylinderGeometry(.13,.13,1,8),plainMat(0x7a2f26,{roughness:.55,metalness:.2}),pipeList,(p,d)=>{d.position.set(p.x,p.h/2,p.z);d.rotation.set(0,0,0);d.scale.set(1,p.h,1)});pm.userData.list=pipeList}
+
+// ---------- static building meshes (one instanced mesh per building · floor · material) ----------
+const pickables=[];
+const originOf=b=>new THREE.Vector3(b.X0,b.base||0,b.Z0);
+function instParts(list,b,sizeFn){const {mat}=matFor(list[0]);const geo=list[0].round?new THREE.CylinderGeometry(.5,.5,1,20):new THREE.BoxGeometry(1,1,1),n=list.length,o=originOf(b);
+  const ar=new Float32Array(n*3),as=new Float32Array(n*3);
+  const mesh=new THREE.InstancedMesh(geo,mat,n);
+  list.forEach((p,i)=>{const q=sizeFn?sizeFn(p):p;dummy.position.set(q.x,q.y,q.z);dummy.rotation.set(0,0,0);dummy.scale.set(q.sx,q.sy,q.sz);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);
+    ar.set([q.x-o.x,q.y-o.y,q.z-o.z],i*3);as.set([q.sx,q.sy,q.sz],i*3)});
+  geo.setAttribute('aRest',new THREE.InstancedBufferAttribute(ar,3));geo.setAttribute('aSize',new THREE.InstancedBufferAttribute(as,3));
+  mesh.castShadow=mesh.receiveShadow=true;mesh.userData.b=b;return mesh}
+BLD.forEach(b=>{b.groups=new Map();const bk=new Map();
+  GEN.parts.forEach(p=>{if(p.b!==b)return;if(b.hip&&(p.k==='roof'||p.k==='para'))return;const k=p.f+'|'+p.m;if(!bk.has(k))bk.set(k,[]);bk.get(k).push(p)});
+  bk.forEach((list,k)=>{const f=list[0].f;if(!b.groups.has(f)){const g=new THREE.Group();g.userData.b=b;b.groups.set(f,g);S.add(g)}
+    const m=instParts(list,b);b.groups.get(f).add(m);pickables.push(m)})});
+// 복지관: green glazed-tile roof with up-turned corners over the second floor and a tiled skirt round the first floor (roof plan + photos)
+{const b=BLD.find(x=>x.id==='bokji');const [c,x]=canvas(256,256);x.fillStyle=shade(b.roof,.75);x.fillRect(0,0,256,256);
+  for(let i=0;i<256;i+=16){const gr=x.createLinearGradient(i,0,i+16,0);gr.addColorStop(0,shade(b.roof,.62));gr.addColorStop(.5,shade(b.roof,1.2));gr.addColorStop(1,shade(b.roof,.62));x.fillStyle=gr;x.fillRect(i+1,0,14,256)}
+  for(let j=0;j<256;j+=32){x.fillStyle='rgba(0,0,0,.25)';x.fillRect(0,j,256,3)}
+  const rm=new THREE.MeshStandardMaterial({map:tex(c),roughness:.32,metalness:.2,envMapIntensity:1.1,side:THREE.DoubleSide}),cap=plainMat(0x2c5a50,{roughness:.4});b.extra=[];
+  const add=(geo,mat)=>{const m=new THREE.Mesh(geo,mat||rm);m.castShadow=m.receiveShadow=true;m.userData.b=b;S.add(m);pickables.push(m);return m};
+  // one roof face swept from an eave line (e0→e1) up to a ridge line (r0→r1); the slope sags a little and the eave curls up at both corners
+  function face(e0,e1,r0,r1,curl,ns){const nt=5,pos=[],uv=[],idx=[],L=Math.hypot(e1[0]-e0[0],e1[1]-e0[1]),rise=Math.hypot(r0[0]-e0[0],r0[1]-e0[1],r0[2]-e0[2]);
+    for(let j=0;j<=nt;j++)for(let i=0;i<=ns;i++){const s=i/ns,t=j/nt,eu=e0[0]+(e1[0]-e0[0])*s,ev=e0[1]+(e1[1]-e0[1])*s;
+      const u=eu+(r0[0]+(r1[0]-r0[0])*s-eu)*t,v=ev+(r0[1]+(r1[1]-r0[1])*s-ev)*t;
+      const y=e0[2]+(r0[2]-e0[2])*t-.18*rise/3*Math.sin(Math.PI*t)+curl*Math.pow(Math.abs(2*s-1),3)*(1-t)*(1-t);
+      const[X,Z]=toW(b,u,v);pos.push(X,y,Z);uv.push(s*L/2.4,t*rise/2.4)}
+    for(let j=0;j<nt;j++)for(let i=0;i<ns;i++){const a=j*(ns+1)+i;idx.push(a,a+1,a+ns+2,a,a+ns+2,a+ns+1)}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();return add(geo)}
+  const roof=(f,list)=>{const g=new THREE.Group();list.forEach(m=>{S.remove(m);g.add(m)});S.add(g);b.extra.push({m:g,f})};
+  // main roof: long ridge, short steep hips (reads like a 팔작 roof from the ground)
+  const o=1.2,y2=7.2-SLAB,H=3.5,u0=-o,u1=47.2+o,v0=3-o,v1=10.8+o,vm=(v0+v1)/2,g=(v1-v0)*.36,yR=y2+H;
+  const ridge=add(new THREE.BoxGeometry(1,1,1),cap);{const[x0,z0]=toW(b,u0+g,vm),[x1,z1]=toW(b,u1-g,vm);ridge.position.set((x0+x1)/2,yR+.12,(z0+z1)/2);ridge.scale.set(Math.max(.4,Math.abs(x1-x0)),.32,Math.max(.4,Math.abs(z1-z0)))}
+  roof(2,[face([u0,v0,y2],[u1,v0,y2],[u0+g,vm,yR],[u1-g,vm,yR],.9,24),face([u1,v1,y2],[u0,v1,y2],[u1-g,vm,yR],[u0+g,vm,yR],.9,24),
+    face([u0,v1,y2],[u0,v0,y2],[u0+g,vm,yR],[u0+g,vm,yR],.9,8),face([u1,v0,y2],[u1,v1,y2],[u1-g,vm,yR],[u1-g,vm,yR],.9,8),ridge]);
+  // tiled skirts round the first floor and over the link to the middle school
+  const shed=(ua,ub,vIn,vOut,yIn,yOut,curl)=>face([ua,vOut,yOut],[ub,vOut,yOut],[ua,vIn,yIn],[ub,vIn,yIn],curl,16);
+  const y1=3.6-SLAB;roof(1,[...[[0,18.1],[26.3,47.2]].map(([a,c2])=>shed(a,c2,3,-1,y1+1.4,y1,.45)),shed(0,47.2,10.8,15.8,y1+1.4,y1,.45)]);
+  roof(2,[shed(18.1,26.3,1.5,-.4,y2+.4,y2,.15),shed(18.1,26.3,1.5,3,y2+.4,y2,.15),shed(47.2,52,3.4,2,y2+.3,y2,.1),shed(47.2,52,3.4,4.8,y2+.3,y2,.1),shed(50,56.9,1.45,.1,y2+.3,y2,.1),shed(50,56.9,1.45,2.8,y2+.3,y2,.1)])}
+// ---------- labels ----------
+const labelsEl=$('#labels');
+BLD.forEach(b=>{const el=document.createElement('div');el.className='lbl';el.textContent=b.n;el.addEventListener('click',()=>showInfo(b));labelsEl.appendChild(el);b.el=el;b.anchor=new THREE.Vector3(b.cx,b.top+3,b.cz)});
+const v3=new THREE.Vector3();
+function placeLabels(){if(labelsEl.classList.contains('off'))return;const w=stage.clientWidth,h=stage.clientHeight;
+  BLD.forEach(b=>{if(cut&&cut.b===b){b.el.style.display='none';return}v3.copy(b.anchor).project(cam);const vis=v3.z<1&&Math.abs(v3.x)<1.1&&Math.abs(v3.y)<1.1;b.el.style.display=vis?'':'none';if(vis)b.el.style.transform=`translate(${(v3.x*.5+.5)*w}px,${(-v3.y*.5+.5)*h}px) translate(-50%,-100%)`})}
+// ---------- floor cutaway ----------
+const CUT=1.4;const cutCache=new Map();let cut=null;
+const furnMat=new THREE.MeshStandardMaterial({roughness:.75,envMapIntensity:.6});
+function boxesMesh(list){const m=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),furnMat,Math.max(1,list.length));m.count=list.length;
+  list.forEach((o,i)=>{dummy.position.set(o.x,o.y,o.z);dummy.rotation.set(0,0,0);dummy.scale.set(o.sx,o.sy,o.sz);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);m.setColorAt(i,col.set(o.c))});m.receiveShadow=true;return m}
+const floorName=(b,f)=>b.gym?(f===1?'1층':'2층 관람석'):(f>1&&b.floors[f].length<=2?'옥탑':f+'층');
+function buildCut(b,f){const key=b.id+':'+f;if(cutCache.has(key))return cutCache.get(key);
+  const g=new THREE.Group(),pl=b.plan[f],y0=pl.y0;const bk=new Map();
+  GEN.parts.forEach(p=>{if(p.b!==b||p.f!==f)return;if(!['ext','part','rail','col','slab'].includes(p.k))return;if(!bk.has(p.m))bk.set(p.m,[]);bk.get(p.m).push(p)});
+  bk.forEach(list=>g.add(instParts(list,b,p=>p.k==='ext'||p.k==='part'||p.k==='col'?{x:p.x,z:p.z,sx:p.sx,sz:p.sz,y:y0+CUT/2,sy:CUT}:p)));
+  g.add(boxesMesh(furnish(b,pl,y0+.01)));
+  const seen=new Map();pl.rooms.forEach(r=>{if(!r.n||r.t==='stair'||r.t==='void'||r.n==='복도')return;const a=(r.u1-r.u0)*(r.v1-r.v0);if(!seen.has(r.n)||seen.get(r.n).a<a)seen.set(r.n,{r,a})});
+  const labels=[...seen.values()].map(({r})=>{const[x,z]=toW(b,(r.u0+r.u1)/2,(r.v0+r.v1)/2);return{name:r.n,p:new THREE.Vector3(x,y0+2.2,z)}});
+  const res={g,labels,y0};cutCache.set(key,res);return res}
+const ZM=new THREE.Matrix4().makeScale(0,0,0);
+function clearCut(){clearHit();if(!cut)return;S.remove(cut.res.g);cut.groups.forEach(gp=>gp.visible=true);
+  cut.hidden.forEach(h=>{if(h.inst){h.inst.setMatrixAt(h.i,h.m);h.inst.instanceMatrix.needsUpdate=true}else h.obj.visible=true});
+  cut.els.forEach(e=>e.remove());cut=null;document.querySelectorAll('#floors .btn').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f==='0'))}
+function showFloor(b,f){clearCut();document.querySelectorAll('#floors .btn').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f===String(f)));if(!f)return;
+  const res=buildCut(b,f);S.add(res.g);const groups=[];b.groups.forEach((gp,ff)=>{if(ff>=f){gp.visible=false;groups.push(gp)}});
+  const hidden=[];(b.extra||[]).forEach(e=>{if(e.f>=f-1){e.m.visible=false;hidden.push({obj:e.m})}});
+  onB.forEach(o=>{if(o.userData.onB===b&&o.visible&&o.position.y>res.y0+.5){o.visible=false;hidden.push({obj:o})}});
+  const m4=new THREE.Matrix4();instAll.forEach(im=>{const L=im.userData.list;if(!L)return;let ch=false;L.forEach((p,i)=>{if(p.b!==b)return;if(p.y!==undefined&&p.y<res.y0+.5&&!p.h)return;im.getMatrixAt(i,m4);hidden.push({inst:im,i,m:m4.clone()});im.setMatrixAt(i,ZM);ch=true});if(ch)im.instanceMatrix.needsUpdate=true});
+  const els=res.labels.map(l=>{const el=document.createElement('div');el.className='room';el.textContent=l.name;labelsEl.appendChild(el);el._p=l.p;return el});
+  cut={b,f,res,groups,hidden,els};
+  const [x0,z0,x1,z1]=b.bbox,span=Math.max(x1-x0,z1-z0),tgt=new THREE.Vector3(b.cx,res.y0+1,b.cz),dir=cam.position.clone().sub(C.target).setY(0).normalize(),dist=span*1.05+18;
+  tw={fp:cam.position.clone(),ft:C.target.clone(),tp:tgt.clone().addScaledVector(dir,dist*.5).add(new THREE.Vector3(0,dist*.95,0)),tt:tgt,t:0}}
+function placeRooms(){if(!cut)return;const w=stage.clientWidth,h=stage.clientHeight;cut.els.forEach(el=>{v3.copy(el._p).project(cam);const vis=v3.z<1&&Math.abs(v3.x)<1.05&&Math.abs(v3.y)<1.05;el.style.display=vis?'':'none';if(vis)el.style.transform=`translate(${(v3.x*.5+.5)*w}px,${(-v3.y*.5+.5)*h}px) translate(-50%,-50%)`})}
+// ---------- info card ----------
+function showInfo(b){if(cut&&cut.b!==b)clearCut();$('#info').hidden=false;const nm=$('#info-name');nm.innerHTML='';nm.append(b.n);
+  const fl=floorList(b);const above=fl.filter(f=>!(f>1&&b.floors[f].length<=2)).length;const sm2=document.createElement('small');sm2.textContent=b.dong+' · 지상 '+above+'층';nm.append(sm2);
+  $('#info-desc').textContent=b.desc;$('#info-src').textContent=b.src;
+  const fe=$('#floors');fe.innerHTML='';[[0,'외관'],...fl.map(f=>[f,floorName(b,f)])].forEach(([f,t])=>{const bt=document.createElement('button');bt.type='button';bt.className='btn';bt.dataset.f=f;bt.textContent=t;
+    bt.setAttribute('aria-pressed',(cut&&cut.b===b?cut.f:0)===f);bt.addEventListener('click',()=>showFloor(b,f));fe.appendChild(bt)})}
+$('#info-x').addEventListener('click',()=>{$('#info').hidden=true;clearCut()});
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let downAt=null;
+R.domElement.addEventListener('pointerdown',e=>{downAt=[e.clientX,e.clientY];tw=null});
+R.domElement.addEventListener('pointerup',e=>{if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>6)return;const r=R.domElement.getBoundingClientRect();
+  ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);const h=ray.intersectObjects(pickables,false).find(h=>h.object.visible&&h.object.parent&&h.object.parent.visible!==false);if(h&&h.object.userData.b)showInfo(h.object.userData.b)});
+// ---------- views ----------
+const VIEWS={all:[[160,170,250],[-10,0,15]],top:[[-8,440,22],[-8,0,15]],front:[[40,24,-4],[-14,8,-21]],road:[[17,6,62],[16,4,-90]],facade:[[70,9,-21],[-15,9,-21]],
+  court:[[-150,70,-100],[-59,4,-23]],garden:[[0,45,112],[-28,4,55]],gym:[[60,45,190],[-28,14,128]],field:[[190,75,-150],[66,0,-19]]};
+let tw=null;
+function go(name){const [p,t]=VIEWS[name];tw={fp:cam.position.clone(),ft:C.target.clone(),tp:new THREE.Vector3(...p),tt:new THREE.Vector3(...t),t:0}}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.view)));
+cam.position.set(...VIEWS.all[0]);C.target.set(...VIEWS.all[1]);
+let night=false;
+function setNight(on){night=on;$('#b-night').setAttribute('aria-pressed',on);S.background=on?SKY_NIGHT:SKY_DAY;S.fog.color.set(on?0x1a2333:0xd3dde6);
+  sun.color.set(on?0x9db4ff:0xfff0dc);sun.intensity=on?.35:3.2;hemi.intensity=on?.12:.55;R.toneMappingExposure=on?1.05:.82;nightMats.forEach(m=>m.emissiveIntensity=on?(m===bulbMat?6:1.3):0)}
+$('#b-night').addEventListener('click',()=>setNight(!night));
+$('#b-labels').addEventListener('click',e=>{const off=labelsEl.classList.toggle('off');e.currentTarget.setAttribute('aria-pressed',!off)});
+$('#b-spin').addEventListener('click',e=>{C.autoRotate=!C.autoRotate;e.currentTarget.setAttribute('aria-pressed',C.autoRotate)});
+addEventListener('keydown',e=>{if(e.key==='n'||e.key==='N')setNight(!night)});
+// ---------- 교실 길 안내 (광덕고 학교생활 도우미) ----------
+// 교실 찾기는 파이썬(rooms.py)이 하고, 여기서는 찾은 교실의 건물·층으로 화면을 옮기고 그 방을 강조만 한다.
+let hit=null; // 지금 강조 중인 방 {meshes, el}
+const hitFill=new THREE.MeshBasicMaterial({color:0xff9f1a,transparent:true,opacity:.32,depthWrite:false});
+const hitLine=new THREE.LineBasicMaterial({color:0xff7a00});
+function clearHit(){if(!hit)return;hit.meshes.forEach(m=>S.remove(m));if(hit.el)hit.el.classList.remove('hit');hit=null}
+// 건물 id, 층, 방 이름을 받아: 정보 카드 열기(showInfo) → 그 층 내부 보기(showFloor) → 방 강조 → 카메라를 방 쪽으로
+function goRoom(id,floor,name){const b=BLD.find(x=>x.id===id);if(!b||!b.floors[floor])return false;
+  showInfo(b);showFloor(b,floor);
+  const rects=b.floors[floor].filter(r=>r.n===name);if(!rects.length)return false;
+  const y0=cut.res.y0,meshes=[];let cx=0,cz=0,area=0;
+  rects.forEach(r=>{const[x0,z0,x1,z1]=wRect(b,r.u0,r.v0,r.u1,r.v1),geo=new THREE.BoxGeometry(x1-x0,2.6,z1-z0);
+    const box=new THREE.Mesh(geo,hitFill),edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo),hitLine);
+    [box,edge].forEach(m=>{m.position.set((x0+x1)/2,y0+1.35,(z0+z1)/2);S.add(m);meshes.push(m)});
+    const a=(x1-x0)*(z1-z0);cx+=(x0+x1)/2*a;cz+=(z0+z1)/2*a;area+=a});
+  const el=cut.els.find(e=>e.textContent===name);if(el)el.classList.add('hit');
+  hit={meshes,el};
+  const off=tw.tp.clone().sub(tw.tt).multiplyScalar(.55);tw.tt=new THREE.Vector3(cx/area,y0+1,cz/area);tw.tp=tw.tt.clone().add(off);
+  return true}
+// 주소 끝 #b=deokrin&f=4&r=Lincoln 2-3 으로 열리면 그 교실로 이동 (앱의 「3D에서 보기」 버튼이 이 주소를 씀)
+function goFromHash(){const p=new URLSearchParams(location.hash.slice(1));if(p.get('b'))goRoom(p.get('b'),Number(p.get('f')),p.get('r'))}
+addEventListener('hashchange',goFromHash);
+// 화면 위쪽 검색창: 검색어를 파이썬 서버(/api/rooms/find)에 보내고, 찾은 교실을 버튼으로 보여준다
+const findOut=$('#find-out');
+function findMsg(t){findOut.hidden=false;findOut.textContent=t}
+$('#find').addEventListener('submit',async e=>{e.preventDefault();const q=$('#find-q').value.trim();if(!q)return;findMsg('찾는 중…');
+  let list;try{const r=await fetch('/api/rooms/find?q='+encodeURIComponent(q));if(!r.ok)throw 0;list=await r.json()}
+  catch{findMsg('교실 검색은 「학교생활 도우미」 앱에서 열었을 때 쓸 수 있어요.');return}
+  if(!list.length){findMsg('「'+q+'」(이)가 들어간 교실을 찾지 못했어요.');return}
+  findOut.innerHTML='';list.forEach(x=>{const bt=document.createElement('button');bt.type='button';bt.className='btn';bt.textContent=x.text;
+    bt.addEventListener('click',()=>{goRoom(x.building_id,x.floor,x.name);findOut.querySelectorAll('.btn').forEach(o=>o.setAttribute('aria-pressed',o===bt))});findOut.appendChild(bt)});
+  if(list.length===1)findOut.firstChild.click()});
+const clock=new THREE.Clock();
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);
+  if(tw){tw.t=Math.min(1,tw.t+dt/1.4);const k=sm(tw.t);cam.position.lerpVectors(tw.fp,tw.tp,k);C.target.lerpVectors(tw.ft,tw.tt,k);if(tw.t>=1)tw=null}
+  C.update();R.render(S,cam);placeLabels();placeRooms()}
+loop();
+goFromHash();
+</script>

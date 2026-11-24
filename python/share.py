@@ -1,5 +1,5 @@
 # share.py : 공유 (웹 주소·QR코드)
-# - 일정·급식·교실·방문 장소·시험 목록으로 휴대폰에서도 볼 수 있는 공유 페이지(HTML)와 메모장 파일을 docs/ 폴더에 만든다
+# - 앱의 8개 탭(플래너·일정·급식·교실·시험 자료·오답 노트·3D 캠퍼스·방문객)을 앱과 같은 모양의 웹 페이지로 docs/ 폴더에 만든다
 # - 프로그램 폴더 전체를 GitHub에 올리면, GitHub Pages가 docs/ 폴더를 웹 주소로 보여 준다 (git 명령 사용)
 # - 웹 주소로 QR코드(docs/qr.svg)를 만든다
 #
@@ -7,10 +7,12 @@
 # 설정 파일 config.txt 에 SHARE_URL(웹 주소), GITHUB_REPO(올릴 저장소 주소)를 적는다.
 
 import os
+import re
 import html
 import shutil
 import subprocess
-from datetime import date, datetime
+from datetime import datetime
+from urllib.parse import urlencode
 
 import schedule
 import meal
@@ -25,140 +27,126 @@ QR_PATH = os.path.join(SHARE_DIR, "qr.svg")
 # 공유 폴더에 같이 올릴 메모장 파일 (원본 경로)
 SHARE_FILES = [schedule.SCHEDULE_PATH, meal.MEAL_PATH, rooms.ROOMS_PATH, visitors.PLACES_PATH, exam_finder.EXAM_LIST_PATH]
 
-# 공유 페이지 공통 모양 (휴대폰 화면에 맞게)
-SHARE_STYLE = """
-body { margin: 0; background: #f3f6f4; color: #1c2a23; font-family: "Malgun Gothic", sans-serif; }
-main { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
-h1 { margin: 0 0 4px; font-size: 24px; }
-h2 { margin: 24px 0 8px; font-size: 18px; }
-.sub { margin: 0 0 16px; color: #4f6158; font-size: 14px; }
-a { color: #2f7d4f; font-weight: bold; }
-.menu a { display: block; background: white; border-radius: 10px; padding: 14px 16px; margin: 8px 0; text-decoration: none; }
-.box { background: white; border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
-.box p { margin: 4px 0; }
-small, .muted { color: #6b7570; }
-table { width: 100%; border-collapse: collapse; background: white; font-size: 14px; }
-th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e3e8e5; }
+# 앱과 같은 탭 (주소 파일 이름, 탭 이름). 첫 화면(index.html)은 앱처럼 스터디 플래너
+TABS = [("index.html", "planner", "스터디 플래너"), ("schedule.html", "schedule", "학교 일정"), ("meal.html", "meal", "급식"),
+        ("rooms.html", "rooms", "교실 찾기"), ("exams.html", "exams", "시험 자료"), ("notes.html", "notes", "오답 노트"),
+        ("campus.html", "campus", "3D 캠퍼스"), ("guide.html", "guide", "방문객")]
+
+# 웹에서만 더하는 모양: 보기 전용 안내, 입력 칸·버튼은 눌리지 않게
+WEB_STYLE = """
+a.tab { text-decoration: none; }
+.web-note { margin: 0; padding: 8px max(16px, calc((100% - 1120px) / 2)); font-size: 0.82rem; color: var(--ink-3); background: var(--line-soft); }
+fieldset.view-only { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.view-only > * + * { margin-top: 16px; }
+fieldset.view-only button:disabled, fieldset.view-only input:disabled, fieldset.view-only select:disabled { cursor: default; opacity: 1; }
+a.place, a.btn { text-decoration: none; color: inherit; }
 """
 
 
-# 공유 페이지 한 장(HTML 문서 전체)을 만든다.
-#   입력: 제목, 본문 HTML / 출력: HTML 문자열
-def make_page(title, body):
-    """공유 페이지 한 장(HTML 문서 전체)을 만든다.
-    입력: 제목, 본문 HTML / 출력: HTML 문자열"""
-    back_link = "<p><a href=\"index.html\">← 광덕고 학교생활 도우미</a></p>\n"
-    if title == "광덕고 학교생활 도우미":        # 첫 페이지에는 돌아가기 링크가 필요 없다
-        back_link = ""
-    return ("<!doctype html>\n<html lang=\"ko\">\n<head>\n<meta charset=\"utf-8\">\n"
-            + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-            + "<title>" + html.escape(title) + "</title>\n<style>" + SHARE_STYLE + "</style>\n</head>\n<body>\n<main>\n"
-            + back_link
-            + "<h1>" + html.escape(title) + "</h1>\n"
-            + "<p class=\"sub\">" + datetime.now().strftime("%Y-%m-%d %H:%M") + " 기준 · 파이썬 share.py가 만든 페이지</p>\n"
-            + body + "\n</main>\n</body>\n</html>\n")
+# app.html에서 화면 모양(CSS)만 꺼낸다.
+#   입력: 없음 / 출력: CSS 글자
+def app_style():
+    """[파일 읽기] 앱 화면 틀(app.html)의 <style> 안쪽 글자를 꺼낸다. (웹 페이지도 앱과 같은 모양이 되게)
+    출력: CSS 글자"""
+    with open(os.path.join(BASE_DIR, "app.html"), "r", encoding="utf-8") as f:
+        text = f.read()
+    return text[text.index("<style>") + len("<style>"):text.index("</style>")]
 
 
-# docs/ 폴더에 페이지 파일 하나를 저장한다.
+# 앱 화면의 버튼 중 웹에서도 쓸 수 있는 것을 링크로 바꾼다.
+#   입력: 화면 HTML / 출력: 웹용 HTML
+def web_links(page):
+    """「3D에서 보기」·방문 목적 버튼을 3D 캠퍼스 링크로 바꾸고, 그림 주소를 웹 폴더에 맞춘다.
+    입력: 화면 HTML / 출력: 웹용 HTML"""
+    page = re.sub(r'<button class="([^"]*)" data-room="([^"]*)">(.*?)</button>',
+                  r'<a class="\1" href="campus.html#\2">\3</a>', page, flags=re.S)
+    page = page.replace('src="docs/qr.svg', 'src="qr.svg')
+    return page
+
+
+# 앱과 같은 모양의 웹 페이지 한 장을 만든다.
+#   입력: 탭 이름, 내용 HTML / 출력: HTML 문서 전체
+def make_page(tab, content):
+    """앱과 같은 모양(위쪽 탭 줄 + 카드)의 웹 페이지 한 장을 만든다. 입력·버튼은 눌리지 않는 보기 전용이다.
+    입력: 탭 이름(예: "meal"), 내용 HTML / 출력: HTML 문서 전체"""
+    nav = ""
+    for file_name, name, label in TABS:
+        active = ""
+        if name == tab:
+            active = " active"
+        nav += '<a class="tab' + active + '" href="' + file_name + '">' + label + "</a>"
+    if tab == "campus":
+        body = '<div id="frames"><iframe id="campus" src="3d/index.html" title="3D 캠퍼스"></iframe></div>'
+    else:
+        body = '<main id="view"><fieldset class="view-only" disabled>' + content + "</fieldset></main>"
+    script = ""
+    if tab == "campus":   # 주소 끝(#b=건물&f=층&r=방)을 3D 화면에 넘겨 그 교실로 이동시킨다
+        script = ('<script>if (location.hash) document.getElementById("campus").src = "3d/index.html" + location.hash;</script>')
+    return ('<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n'
+            + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            + "<title>광덕고 학교생활 도우미</title>\n"
+            + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">\n'
+            + '<link rel="stylesheet" href="app.css">\n</head>\n<body>\n'
+            + '<header class="topbar"><div class="brand"><span class="brand-mark"></span>광덕고 학교생활 도우미</div>'
+            + '<nav class="view-tabs" aria-label="화면 선택">' + nav + "</nav></header>\n"
+            + '<p class="web-note">' + datetime.now().strftime("%Y-%m-%d %H:%M")
+            + " 기준 · 파이썬 share.py가 앱 화면을 그대로 만든 공유 페이지예요. 입력·저장·AI는 앱에서 쓸 수 있어요.</p>\n"
+            + '<div class="stage">' + body + "</div>\n" + script + "\n</body>\n</html>\n")
+
+
+# docs/ 폴더에 파일 하나를 저장한다.
 #   입력: 파일 이름, 내용 / 출력: 없음
 def write_page(name, text):
-    """[파일 쓰기] docs/ 폴더에 페이지 파일 하나를 저장한다. 입력: 파일 이름, 내용"""
+    """[파일 쓰기] docs/ 폴더에 파일 하나를 저장한다. 입력: 파일 이름, 내용"""
     with open(os.path.join(SHARE_DIR, name), "w", encoding="utf-8") as f:
         f.write(text)
 
 
-# 이번 달 급식 페이지 본문.
+# 웹의 교실 찾기 탭에 붙일 전체 교실 목록 (웹에서는 검색 대신 목록에서 고른다).
 #   입력: 없음 / 출력: HTML
-def meal_body():
-    """이번 달 급식 페이지 본문. 출력: HTML"""
-    body = ""
-    for day, day_meals in meal.meals_by_day(meal.load_meals()[0]):
-        body += "<div class=\"box\"><p><b>" + day + "</b></p>"
-        for item in day_meals:
-            dishes = []
-            for dish in item["dishes"]:
-                text = html.escape(dish["name"])
-                if len(dish["allergies"]) > 0:
-                    text += " <small>(" + html.escape(meal.allergy_text(dish["allergies"])) + ")</small>"
-                dishes.append(text)
-            body += ("<p>[" + html.escape(item["type"]) + "] <small>" + html.escape(item["calorie"]) + "</small><br>"
-                     + ", ".join(dishes) + "</p>")
-        body += "</div>"
-    if body == "":
-        body = "<p class=\"muted\">이번 달 급식 정보가 없어요.</p>"
-    return body
-
-
-# 교실 목록 페이지 본문 (건물·층·방 이름 표).
-#   입력: 없음 / 출력: HTML
-def rooms_body():
-    """교실 목록 페이지 본문 (건물·층·방 이름 표). 출력: HTML"""
+def all_rooms_card():
+    """웹의 「교실 찾기」 탭에 붙일 전체 교실 목록. 누르면 3D 캠퍼스에서 그 교실로 이동한다.
+    (웹에는 파이썬 서버가 없어 검색 대신 목록을 미리 만들어 둔다) 출력: HTML"""
+    import screens
     rows = ""
     for room in rooms.load_rooms():
-        rows += ("<tr><td>" + html.escape(room["building"]) + "</td><td>" + html.escape(room["floor_name"]) + "</td><td>"
-                 + html.escape(room["name"]) + "</td></tr>")
-    return "<table><thead><tr><th>건물</th><th>층</th><th>방 이름</th></tr></thead><tbody>" + rows + "</tbody></table>"
+        target = urlencode({"b": room["building_id"], "f": room["floor"], "r": room["name"]})
+        rows += ('<li><span class="place">' + html.escape(room["building"] + " " + room["floor_name"]) + "</span>"
+                 + '<span class="room-name">' + html.escape(room["name"]) + "</span>"
+                 + '<button class="btn small" data-room="' + html.escape(target) + '">3D에서 보기</button></li>')
+    return screens.card("ALL ROOMS", "전체 교실 목록 · " + str(len(rooms.load_rooms())) + "개", '<ul class="room-list">' + rows + "</ul>")
 
 
-# 방문 장소 페이지 본문.
-#   입력: 없음 / 출력: HTML
-def places_body():
-    """방문 장소 페이지 본문. 출력: HTML"""
-    body = ""
-    for place in visitors.load_places():
-        body += ("<div class=\"box\"><p><b>" + html.escape(place["목적"]) + "</b></p>"
-                 + "<p>" + html.escape(place["건물"] + " " + place["층"] + "층 " + place["방 이름"]) + "</p>"
-                 + "<p><small>" + html.escape(place["설명"]) + "</small></p></div>")
-    return body
-
-
-# 시험 목록 페이지 본문 (기출문제 받는 사이트 링크).
-#   입력: 없음 / 출력: HTML
-def exams_body():
-    """시험 목록 페이지 본문 (기출문제 받는 사이트 링크). 출력: HTML"""
-    today = date.today()
-    body = ""
-    for exam in exam_finder.load_exam_list():
-        body += ("<div class=\"box\"><p><b>" + html.escape(exam["시험명"]) + "</b></p>"
-                 + "<p><small>" + html.escape(exam_finder.exam_line(exam, today)) + "</small></p>"
-                 + "<p><a href=\"" + html.escape(exam["링크"]) + "\">" + exam_finder.link_label(exam, today) + " ↗</a></p></div>")
-    return body
-
-
-# 공유 첫 페이지 (메뉴).
-#   입력: 없음 / 출력: HTML
-def index_page():
-    """공유 첫 페이지 (메뉴). 출력: HTML"""
-    menu = ("<div class=\"menu\">"
-            + "<a href=\"schedule.html\">📅 학교 일정 · D-day</a>"
-            + "<a href=\"meal.html\">🍚 이번 달 급식</a>"
-            + "<a href=\"rooms.html\">🏫 교실 목록</a>"
-            + "<a href=\"places.html\">🧭 방문 안내</a>"
-            + "<a href=\"exams.html\">📝 시험 자료</a></div>"
-            + "<h2>메모장 파일</h2><p class=\"muted\">")
-    for path in SHARE_FILES:
-        name = os.path.basename(path)
-        menu += "<a href=\"data/" + name + "\">" + name + "</a> &nbsp;"
-    return make_page("광덕고 학교생활 도우미", menu + "</p>")
-
-
-# 공유 폴더(docs/)에 공유 페이지 6장과 메모장 파일들을 만든다.
+# 공유 폴더(docs/)에 앱과 같은 모양의 웹 페이지 8장과 메모장 파일들을 만든다.
 #   입력: 없음 / 출력: 없음
 def make_share_pages():
-    """[파일 읽기][파일 쓰기][출력] 공유 폴더(docs/)에 공유 페이지 6장과 메모장 파일들을 만든다.
+    """[파일 읽기][파일 쓰기][출력] 공유 폴더(docs/)에 앱의 8개 탭을 앱과 같은 모양의 웹 페이지로 만든다.
+    탭 화면은 앱과 똑같이 screens.py가 만들고, 3D 캠퍼스와 메모장 파일도 함께 복사한다.
     출력: 없음"""
-    os.makedirs(os.path.join(SHARE_DIR, "data"), exist_ok=True)
-    # 학교 일정 페이지는 schedule.py가 만드는 일정 페이지를 그대로 쓴다 (분류별 색·D-day)
-    write_page("schedule.html", schedule.make_schedule_page(schedule.load_schedule(), date.today()))
-    write_page("meal.html", make_page("이번 달 급식", meal_body()))
-    write_page("rooms.html", make_page("교실 목록", rooms_body()))
-    write_page("places.html", make_page("방문 안내", places_body()))
-    write_page("exams.html", make_page("시험 자료", exams_body()))
-    write_page("index.html", index_page())
+    import screens                       # screens.py도 share.py를 쓰므로, 필요할 때 불러온다
+    os.makedirs(os.path.join(SHARE_DIR, "data", "reports"), exist_ok=True)
+    os.makedirs(os.path.join(SHARE_DIR, "3d"), exist_ok=True)
+    write_page("app.css", app_style() + WEB_STYLE)
+    for file_name, tab, label in TABS:
+        content = ""
+        if tab != "campus":
+            content = screens.screen_only(tab)
+        if tab == "rooms":
+            content += all_rooms_card()
+        write_page(file_name, make_page(tab, web_links(content)))
+    shutil.copy(os.path.join(BASE_DIR, "index.html"), os.path.join(SHARE_DIR, "3d", "index.html"))
     for path in SHARE_FILES:
         if os.path.exists(path):
             shutil.copy(path, os.path.join(SHARE_DIR, "data", os.path.basename(path)))
-    print("공유 페이지를 만들었습니다:", SHARE_DIR)
+    reports = os.path.join(BASE_DIR, "data", "reports")
+    if os.path.exists(reports):           # 오답 노트의 오답률 그래프 그림
+        for name in os.listdir(reports):
+            if name.endswith(".png"):
+                shutil.copy(os.path.join(reports, name), os.path.join(SHARE_DIR, "data", "reports", name))
+    for old in ["places.html"]:           # 예전 공유 페이지 이름 정리
+        if os.path.exists(os.path.join(SHARE_DIR, old)):
+            os.remove(os.path.join(SHARE_DIR, old))
+    print("공유 페이지를 만들었습니다:", SHARE_DIR, "(앱과 같은 탭 8개)")
 
 
 # 웹 주소로 QR코드를 만들어 docs/qr.svg로 저장하고, 콘솔에도 그려 준다.
